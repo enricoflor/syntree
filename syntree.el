@@ -697,8 +697,7 @@ syntree-wrap            = %s"
     ("l" "Toggle value of one-line" syntree--toggle-one-line)
     ("p" "Set amount of padding" syntree--set-padding)
     ("h" "Set minumum height of branches" syntree--set-height)
-    ("w" "Set value for word-wrapping (0 is no wrapping)"
-     syntree--set-wrap)]
+    ("w" "Set value for word-wrapping" syntree--set-wrap)]
    ["Actions"
     ("i" "Insert tree" syntree--exit-insert)
     ("k" "Kill tree" syntree--exit-kill)
