@@ -126,9 +126,9 @@ Inputs:
 
 * Syntax of the input
 
-The input is a substring of the buffer made up parentheses and objects
-formatted as strings.  This input is ~read~ as a list.  Thus, these
-are valid inputs:
+The input is a substring of the buffer made up by parentheses and
+objects formatted as strings.  This input is ~read~ as a list.  Thus,
+these are valid inputs:
 
 #+begin_src emacs-lisp
 ("abc" ("def" "ghi"))
@@ -149,6 +149,7 @@ inputs:
 
 The first string in a list is the label of the branching node.  Here,
 the embedded constituent has an empty label:
+
 #+begin_example
 ("XP" "abc" ("" "def" "ghi" "X:xyz"))
 
@@ -272,10 +273,11 @@ these two commands by passing a numeric value as a prefix argument.
 That is, ~C-u 10 syntree-insert~ inserts a tree where sister nodes are
 separated by ten white spaces.
 
-The third command, ~syntree-custom~, allows to specify the value of
-each of the five variables.  It does so by displaying a transient
-pop-up that specifies how to set the variables, which is by evaluating
-these interactive functions:
+The third command, ~syntree-custom~, allows you to specify the value
+of each of the five variables.  It does so by displaying a transient
+pop-up that provides you with convenient keys to evaluate these
+interactive functions, and visual feedback about the current values in
+the echo area:
 
 + ~syntree--toggle-smooth~
 + ~syntree--toggle-one-line~
