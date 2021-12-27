@@ -1,0 +1,297 @@
+#+title: syntree.el
+#+author: Enrico Flor
+#+startup: content
+
+~syntree~ is a package for GNU Emacs that draws plain text
+constituency trees.  It is meant to be for plain text what packages
+like [[https://www.ctan.org/pkg/qtree][qtree]] or [[https://www.ctan.org/pkg/forest][forest]] are for LaTeX, providing only those features that
+make sense for the plain text format.  ~syntree~ is not specific to
+any major mode (the only thing it does is getting an input as a buffer
+substring, and inserting a different string in the same buffer).  Its
+only external dependency is [[https://elpa.gnu.org/packages/transient.html][transient.el]] (which is built in starting
+with Emacs 28).
+
+While it is written with the linguist's usage in mind, ~syntree~ can
+obviously be used for any sort of tree-like diagram.  Here's an
+example of what you can get from ~syntree~:
+
+#+begin_example
+("Sentence"
+    "_NP:the man"
+    ("VP" "Verb:hit"
+    ("NP" "T:the" "N:ball")))
+
+      Sentence
+   ._____|_____.
+   |           |
+   NP          VP
+.__|__.    .___|___.
+|_____|    |       |
+the man  Verb      NP
+          hit   .__|__.
+                |     |
+                T     N
+               the  ball
+#+end_example
+
+This package only draws the tree according to some specified
+preferences.  It does not provide functionalities such as drawing
+arrows between nodes.  Once the tree is drawn, however, arrows are
+rather easily added manually with [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Picture-Mode.html][picture-mode]] (built-in in GNU
+Emacs).
+
+* Options
+
+The shape of the output tree is controlled by five variables:
+
++ ~syntree-smooth-branches~: whether the branches are square or have
+  smooth angles (~nil~ by default, which means square branches).
++ ~syntree-one-line~: whether or not the leaves are to be set all on
+  the bottom line (~nil~ by default).
++ ~syntree-padding~: how much white space is used as padding between
+  sister nodes (~2~ by default).
++ ~syntree-height~: the minimum height of individual stems (~1~ by
+  default).
++ ~syntree-wrap~: at which width labels and leaves are to be
+  word-wrapped (~0~ by default, which means no word-wrapping at all).
+
+The value for these variables can be changed either as a default (by
+specifying it in ~init.el~) or temporarily overridden (more about that
+below).
+
+#+begin_example
+Inputs:
+("abc" "L:def" "ghi xyz")
+("abc" "L:def" ("ghi" "lmn" "xyz"))
+
+                       |
+ smooth-branches nil   |  smooth-branchees t
+                       |
+     abc               |      abc
+  .___|__.             |    ___|__
+  |      |             |   /      \
+  L      |             |   L      |
+ def  ghi xyz          |  def  ghi xyz
+                       |
+-----------------------+----------------------
+                       |
+ one-line nil          |  one-line t
+                       |
+     abc               |       abc
+  .___|___.            |    .___|___.
+  |       |            |    |       |
+  L      ghi           |    |      ghi
+ def   .__|_.          |    |    .__|_.
+       |    |          |    |    |    |
+       |    |          |    L    |    |
+      lmn  xyz         |   def  lmn  xyz
+                       |
+-----------------------+---------------------
+                       |
+ padding 2             |  padding 5
+                       |
+     abc               |       abc
+  .___|__.             |   .____|____.
+  |      |             |   |         |
+  L      |             |   L         |
+ def  ghi xyz          |  def     ghi xyz
+                       |
+-----------------------+---------------------
+                       |
+ height 1              |  height 3
+                       |
+     abc               |      abc
+  .___|__.             |       |
+  |      |             |       |
+  L      |             |       |
+ def  ghi xyz          |   .___|__.
+                       |   |      |
+                       |   |      |
+                       |   |      |
+                       |   L      |
+                       |  def  ghi xyz
+                       |
+-----------------------+---------------------
+                       |
+ wrap 0                |  wrap 2
+                       |
+     abc               |     abc
+  .___|__.             |   .__|_.
+  |      |             |   |    |
+  L      |             |   L    |
+ def  ghi xyz          |  def  ghi
+                       |       xyz
+                       |
+#+end_example
+
+* Syntax of the input
+
+The input is a substring of the buffer made up parentheses and objects
+formatted as strings.  This input is ~read~ as a list.  Thus, these
+are valid inputs:
+
+#+begin_src emacs-lisp
+("abc" ("def" "ghi"))
+
+("abc" "def" "ghi")
+#+end_src emacs-lisp
+
+Every list must contain more than one string.  These are not valid
+inputs:
+
+#+begin_src emacs-lisp
+"abc" "def"         ; this is not a list
+
+("abc" ("def" ghi)) ; not everything here is a string
+
+("abc" ("def"))     ; the embedded list contains only one string
+#+end_src emacs-lisp
+
+The first string in a list is the label of the branching node.  Here,
+the embedded constituent has an empty label:
+#+begin_example
+("XP" "abc" ("" "def" "ghi" "X:xyz"))
+
+      XP
+  ____|____
+ /         \
+ |         |
+abc    ____|____
+      /    |    \
+      |    |    X
+     def  ghi  xyz
+#+end_example
+
+Terminal nodes can themselves be labeled: the label and the text are
+separated by a ~:~.  Here some examples of terminals:
+
+#+begin_example
+ ("" "XP:abcd")  |   |
+                 |  XP
+                 | abcd
+                 |
+-----------------+-------
+                 |
+ ("" "abcd")     |   |
+                 | abcd
+                 |
+-----------------+-------
+                 |
+ ("YP" ":abcd")  |  YP
+                 |   |
+                 | abcd
+                 |
+-----------------+-------
+                 |
+ ("YP" ":ab:cd") |  YP
+                 |   |
+                 | ab:cd
+#+end_example
+
+If the label on the terminal node starts with, or is ~_~, the leaf
+will be under some sort of roof.  For linguists, this usually
+indicates that the internal syntax of that node is ignored.
+
+#+begin_example
+("DP" "D:a" "_NP:beautiful tree")
+("DP" "D:a" "_:beautiful tree")
+
+     DP                      DP
+.____|____.             .____|____.
+|         |             |         |
+D        NP             D  .______|_____.
+a  .______|_____.       a  |____________|
+   |____________|          beautiful tree
+   beautiful tree
+#+end_example
+
+Whether you are under a roof or not, if you want to force the text of
+a terminal node or of a label to be on multiple lines, use ~\n~ in the
+input.
+
+#+begin_example
+("Modified \n sentence"
+    "NP:the man"
+    "_VP:vigorously\nhit the ball")
+
+
+      Modified
+      sentence
+   ._____|_____.
+   |           |
+   NP         VP
+the man  ._____|____.
+         |__________|
+          vigorously
+         hit the ball
+#+end_example
+
+Whether the input string in the buffer is split in different lines or
+not, and whether it is indented in any way or not is irrelevant.
+
+* The interactive commands
+
+There are three interactive commands:
+
++ ~syntree-insert~
++ ~syntree-kill~
++ ~syntree-custom~
+
+Their input is the first sexp that starts with ~(~ after point.  This
+means that the input can be any subconstituent of an input string.
+Here, point is in a position that will cause only the VP node to be
+rendered as a tree:
+
+#+begin_example
+("Sentence"
+    ("NP" "T:the" "N:man")
+   █("VP" "Verb:hit"
+    ("NP" "T:the" "N:ball")))
+
+      VP
+  .___|___.
+  |       |
+Verb      NP
+ hit   .__|__.
+       |     |
+       T     N
+      the  ball
+#+end_example
+
+Two commands are basic, and draw the tree according to the default
+values of the variables.
+
++ ~syntree-insert~: inserts the tree at the first line after point
+  that only contains whitespace (or at the end of the buffer, if there
+  is no such line).
++ ~syntree-kill~: adds the tree as the most recent kill in the
+  kill-ring, for you to yank wherever you prefer.
+
+The value of ~syntree-padding~ can be temporarily overridden with
+these two commands by passing a numeric value as a prefix argument.
+That is, ~C-u 10 syntree-insert~ inserts a tree where sister nodes are
+separated by ten white spaces.
+
+The third command, ~syntree-custom~, allows to specify the value of
+each of the five variables.  It does so by displaying a transient
+pop-up that specifies how to set the variables, which is by evaluating
+these interactive functions:
+
++ ~syntree--toggle-smooth~
++ ~syntree--toggle-one-line~
++ ~syntree--set-padding~
++ ~syntree--set-height~
++ ~syntree--set-wrap~
+
+If these functions are called from outside the transient (e.g., via
+~M-x syntree--toggle-smooth~), they just set a new value for the
+corresponding variable for the rest of the Emacs session.
+
+#+CAPTION: Transient for ~syntree-custom~.
+#+NAME:   fig:transient-screenshot
+[[./transient-screenshot.png]]
+
+Once the values are set, ~i~ and ~k~ evaluate ~syntree-insert~ and
+~syntree-kill~ respectively, and restore the default value of the
+variables.  With ~!i~ and ~!k~, the values specified are saved as the
+new defaults for the rest of the Emacs session.
