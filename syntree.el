@@ -623,11 +623,11 @@ session."
 (defun syntree--show-values ()
   "Echo the current values of the relevant variables."
   (message
-   "sytree-smooth-branches = %s
-syntree-one-line       = %s
-syntree-padding        = %s
-syntree-height         = %s
-syntree-wrap           = %s"
+   "syntree-smooth-branches = %s
+syntree-one-line        = %s
+syntree-padding         = %s
+syntree-height          = %s
+syntree-wrap            = %s"
    (alist-get 'syntree-smooth-branches syntree--current)
    (alist-get 'syntree-one-line syntree--current)
    (alist-get 'syntree-padding syntree--current)
