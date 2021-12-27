@@ -614,7 +614,7 @@ session."
         (setf (alist-get 'syntree-one-line
                          syntree--current)
               new-value)
-        (syntree--show-values))f
+        (syntree--show-values))
     (let ((new-value
            (not syntree-one-line)))
       (setq syntree-one-line new-value)
