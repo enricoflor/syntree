@@ -699,8 +699,8 @@ syntree-wrap            = %s"
     ("h" "Set minumum height of branches" syntree--set-height)
     ("w" "Set value for word-wrapping" syntree--set-wrap)]
    ["Actions"
-    ("i" "Insert tree" syntree--exit-insert)
-    ("k" "Kill tree" syntree--exit-kill)
+    ("i" " Insert tree" syntree--exit-insert)
+    ("k" " Kill tree" syntree--exit-kill)
     ("!i" "Insert tree and save current values" syntree--exit-insert-save)
     ("!k" "Kill tree and save current values" syntree--exit-kill-save)]])
 
