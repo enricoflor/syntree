@@ -718,7 +718,8 @@ the amount of padding."
       (unless input
         (user-error "No valid input found"))
       (unless (search-forward-regexp "^\s*$" nil t)
-        (goto-char (point-max)))
+        (goto-char (point-max))
+        (newline t nil))
       (insert (syntree--main input arg))
       (message nil))))
 
