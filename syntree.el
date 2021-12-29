@@ -112,13 +112,6 @@ reset at every invocation of an interactive function."
 (defalias 'syntree--rrg 'replace-regexp-in-string
   "Shorten the name of a function used a lot here.")
 
-(defun syntree--flatten (l)
-  "With L a nested list, return it flat."
-    (if l
-        (if (atom l)
-            (list l)
-          (mapcan #'syntree--flatten l))))
-
 (defun syntree--fill (s p w)
   "If S is shorter than W, pad right and left with P.
 Always return a string that is at least as long as W."
@@ -150,7 +143,7 @@ Always return a string that is at least as long as W."
 (defun syntree--split-and-wrap (s)
   "Split S at \"\\n\", wrap at desired length, and split again.
 Return a list of strings."
-  (syntree--flatten
+  (flatten-tree
    (mapcar (lambda (x) (split-string x "[\f\t\n\r\v]+" t))
            (mapcar (lambda (x) (syntree--wrap-string x syntree-wrap))
                    (split-string (string-trim s)
@@ -199,7 +192,7 @@ the node, and whose cdr is a list of strings."
               (make-list syntree-height (syntree--fill "|" " " width))
             (syntree--fill "|" " " width))))
     (cons width
-          (mapcan #'syntree--flatten
+          (mapcan #'flatten-tree
                   (list
                    stem
                    label
@@ -403,7 +396,7 @@ LAB is the label string, D the list of daughter nodes."
             (syntree--rrg "[^|]" " "
                           branch-string))))
     (syntree--homogenize-length
-     (mapcan #'syntree--flatten
+     (mapcan #'flatten-tree
              (list single-stem
                     label
                     (when (> syntree-height 1)
@@ -474,7 +467,7 @@ is not."
       (unless (ignore-errors (read candidate))
         (throw 'error nil))
       (unless (cl-every #'stringp
-                        (syntree--flatten (read candidate)))
+                        (flatten-tree (read candidate)))
         (user-error
          "Not a valid input: each element must be a string"))
       (unless (cl-every (lambda (x) (> (length x) 1))
