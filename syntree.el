@@ -6,7 +6,7 @@
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
 ;; URL: https://github.com/enricoflor/syntree
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "25.1") (transient "0.3.7"))
+;; Package-Requires: ((emacs "27.1") (transient "0.3.7"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
