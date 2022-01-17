@@ -109,9 +109,6 @@ reset at every invocation of an interactive function."
 
 ;; Basic string functions
 
-(defalias 'syntree--rrg 'replace-regexp-in-string
-  "Shorten the name of a function used a lot here.")
-
 (defun syntree--fill (s p w)
   "If S is shorter than W, pad right and left with P.
 Always return a string that is at least as long as W."
@@ -158,7 +155,7 @@ the wrap length specified by 'syntree-wrap'."
   (let* ((str
           (string-trim s))
          (str-one-line
-          (syntree--rrg "\n" "" str))
+          (replace-regexp-in-string "\n" "" str))
          (raw-label
           (if (string= (string-trim-right str-one-line ":.*$")
                        str)
@@ -199,11 +196,11 @@ the node, and whose cdr is a list of strings."
                    (when (and (string-prefix-p "_" (car leaf-list))
                               (> width 2))     ; add roof
                      (list
-                      (syntree--rrg "^_\\|_$" "."
-                                    (syntree--fill "|" "_" width))
-                      (syntree--rrg "^_\\|_$" "|"
-                                    (apply #'concat
-                                           (make-list width "_")))))
+                      (replace-regexp-in-string "^_\\|_$" "."
+                                                (syntree--fill "|" "_" width))
+                      (replace-regexp-in-string "^_\\|_$" "|"
+                                                (apply #'concat
+                                                       (make-list width "_")))))
                    padded-leaf-list)))))
 
 (defun syntree--replace-terminal-strings (l)
@@ -289,35 +286,35 @@ node."
 
 (defun syntree--draw-branch (s)
   "Given string of stems S, return a branch string connecting them."
-  (if (= (length (syntree--rrg "\s" "" s))
+  (if (= (length (replace-regexp-in-string "\s" "" s))
          1)
       ""
     (let* ((left-offset
-            (syntree--rrg "|.*$" "" s))
+            (replace-regexp-in-string "|.*$" "" s))
            (right-offset
-            (syntree--rrg "^.*|" "" s))
+            (replace-regexp-in-string "^.*|" "" s))
            (branch-width
             (- (length s)
                (+ (length left-offset)
                   (length right-offset))))
            (raw-branch
             (concat left-offset
-                    (syntree--rrg "^_\\|_$" "."
-                                  (syntree--fill "|" "_"
-                                                 branch-width))
+                    (replace-regexp-in-string "^_\\|_$" "."
+                                              (syntree--fill "|" "_"
+                                                             branch-width))
                     right-offset)))
       (if syntree-smooth-branches
-          (syntree--rrg "\\." " " raw-branch)
+          (replace-regexp-in-string "\\." " " raw-branch)
         raw-branch))))
 
 (defun syntree--split-branch (s)
   "Return list of branch, left and right offset.
 S is the string containing the branch."
-  (list (syntree--rrg "\s" "" s)
-        (syntree--rrg "[^\s]" ""
-                      (syntree--rrg "\s*$" "" s))
-        (syntree--rrg "[^\s]" ""
-                      (syntree--rrg "^\s*" "" s))))
+  (list (replace-regexp-in-string "\s" "" s)
+        (replace-regexp-in-string "[^\s]" ""
+                                  (replace-regexp-in-string "\s*$" "" s))
+        (replace-regexp-in-string "[^\s]" ""
+                                  (replace-regexp-in-string "^\s*" "" s))))
 
 (defun syntree--gen-label-list (label-string branch-string)
   "Return a list of strings to be concatenated as the label.
@@ -328,7 +325,7 @@ horizontal branch."
       ;; If the label is empty, all we need is to copy the branch
       ;; string replacing everything that is not a "|" with white
       ;; space:
-      (syntree--rrg "[^|]" " " branch-string)
+      (replace-regexp-in-string "[^|]" " " branch-string)
     (let* ((label-list
             (syntree--split-and-wrap label-string))
            (branch-segments
@@ -370,11 +367,12 @@ length of the longest string in L."
 If 'syntree-smooth-branches' is nil, or there isn't more than one stem, do
 nothing."
   (let ((new-top
-         (syntree--rrg "^\\(\s*\\)|" "\\1/"
-                       (syntree--rrg "|\\(\s*\\)$" "\\\\\\1"
-                                     (car l)))))
+         (replace-regexp-in-string "^\\(\s*\\)|" "\\1/"
+                                   (replace-regexp-in-string "|\\(\s*\\)$"
+                                                             "\\\\\\1"
+                                                             (car l)))))
     (if (or (not syntree-smooth-branches)
-            (= (length (syntree--rrg "\s" "" (car l)))
+            (= (length (replace-regexp-in-string "\s" "" (car l)))
                1))
         (identity l)
       (cl-replace l (cons new-top (cdr l))))))
@@ -390,19 +388,19 @@ LAB is the label string, D the list of daughter nodes."
           (syntree--gen-label-list lab
                                    branch-string))
          (single-stem
-          (if (= (length (syntree--rrg "\s" "" (car subtree)))
+          (if (= (length (replace-regexp-in-string "\s" "" (car subtree)))
                  1)               ; there is only one stem
               (car subtree)
-            (syntree--rrg "[^|]" " "
-                          branch-string))))
+            (replace-regexp-in-string "[^|]" " "
+                                      branch-string))))
     (syntree--homogenize-length
      (mapcan #'flatten-tree
              (list single-stem
                     label
                     (when (> syntree-height 1)
                       (make-list syntree-height
-                                 (syntree--rrg "[^|]" " "
-                                               branch-string)))
+                                 (replace-regexp-in-string "[^|]" " "
+                                                           branch-string)))
                     branch-string
                     (syntree--replace-outer-stems subtree))))))
 
@@ -434,8 +432,7 @@ Return the top node."
   "Append \"\\n\" to each string in (cadr L) and concatenate them all.
 Also, remove the stem from the top node, and return the resulting
 string (cadr L), which is the plain text tree."
-   (concat "\n"   ; add empty line for more convenient insertion or
-                    ; yanking
+   (concat "\n"   ; add empty line for insertion or yanking
            (apply #'concat
                   (mapcar
                    (lambda (x) (concat x "\n"))
