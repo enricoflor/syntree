@@ -2,6 +2,8 @@
 #+author: Enrico Flor
 #+startup: content
 
+[[https://melpa.org/#/syntree][file:https://melpa.org/packages/syntree-badge.svg]]
+
 ~syntree~ is a package for GNU Emacs that draws plain text
 constituency trees.  It is meant to be for plain text what packages
 like [[https://www.ctan.org/pkg/qtree][qtree]] or [[https://www.ctan.org/pkg/forest][forest]] are for LaTeX, providing only those features that
@@ -39,6 +41,8 @@ preferences.  It does not provide functionalities such as drawing
 arrows between nodes.  Once the tree is drawn, however, arrows are
 rather easily added manually with [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Picture-Mode.html][picture-mode]] (built-in in GNU
 Emacs).
+
+You can install ~syntree~ through [[https://melpa.org/#/syntree][melpa]].
 
 * Options
 

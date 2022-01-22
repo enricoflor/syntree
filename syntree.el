@@ -1,6 +1,6 @@
 ;;; syntree.el --- Draw plain text constituency trees  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021 Enrico Flor
+;; Copyright (C) 2021, 2022 Enrico Flor
 
 ;; Author: Enrico Flor <enrico@eflor.net>
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
@@ -37,22 +37,6 @@
 ;;
 ;; For full documentation, see the readme file at
 ;;          <https://github.com/enricoflor/syntree>
-;;
-;; Terminology:
-;;
-;; The input string is read as a nested list of strings.  It is taken
-;; by the interactive functions as the first parenthesized sexp after
-;; point in the buffer.
-;;
-;; A LABEL is a string that is the first element in any list in the
-;; input.  A NODE is a list whose car is a number N, and whose cdr is
-;; a list of strings each of length N.  A BRANCH is a string that
-;; graphically connects a label to its daughter node(s).  The first
-;; thing that happens to the input is that each non-label (a terminal
-;; string) is converted into a NODE.  Then, sister nodes are
-;; concatenated together so that their cdrs are zipped, concatenating
-;; the strings with padding.  Then, non-terminals are recursively
-;; built by connecting labels with their daughters.
 
 ;;; Code:
 
