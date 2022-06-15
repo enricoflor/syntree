@@ -186,6 +186,10 @@ These are all the commands that are available in ~syntree-mode~ buffers,
 each with the default keybinding.  You can define your own keybindings
 in ~syntree-mode-map~.
 
+*** syntree-info
+
+Read the documentation for ~syntree~ in the info system.
+
 *** syntree-change-value (C-c C-v)
 
 Change the value of any [[#properties][properties]], with completion, and
