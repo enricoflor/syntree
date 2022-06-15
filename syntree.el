@@ -184,27 +184,25 @@ in `syntree-styles-list'.")
 
 Each element is a cons (NAME . PLIST).")
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; All stored styles are in 'syntree-styles-list', a list of plists.      ;;
-;;                                                                        ;;
-;; There is a special style, 'syntree--style' (a buffer local variable):  ;;
-;; 'syntree' sets the value of 'syntree--style' to the plist associated   ;;
-;; to 'syntree-default-style', which is a symbol that is the car of a     ;;
-;; cell in 'syntree-styles-list'.  Functions that change the style or     ;;
-;; manipulate current values do so operating on the plist                 ;;
-;; 'syntree--style'.                                                      ;;
-;;                                                                        ;;
-;; Every time 'syntree--refresh' is called, the value of                  ;;
-;; 'syntree--current-style' is set to the one of 'syntree--style'.  If    ;;
-;; multiple syntree buffers are open, they can each have a different      ;;
-;; value for 'syntree--style'.                                            ;;
-;;                                                                        ;;
-;; 'syntree-styles-alist' is generated every time 'syntree' and           ;;
-;; 'syntree-change-value' are called: it is ;; a list of cons cells (NAME ;;
-;; . PLIST) where NAME is the value of :name in PLIST.                    ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; All stored styles are in 'syntree-styles-list', a list of plists.       ;;
+;;                                                                         ;;
+;; There is a special style, 'syntree--style' (a buffer local variable):   ;;
+;; 'syntree-new' sets the value of 'syntree--style' to the plist           ;;
+;; associated to 'syntree-default-style', which is a symbol that is the    ;;
+;; car of a cell in 'syntree-styles-list'.  Functions that change the      ;;
+;; style or manipulate current values do so operating on the plist         ;;
+;; 'syntree--style'.                                                       ;;
+;;                                                                         ;;
+;; Every time 'syntree--refresh' is called, the value of                   ;;
+;; 'syntree--current-style' is set to the one of 'syntree--style'.  If     ;;
+;; multiple syntree buffers are open, they can each have a different       ;;
+;; value for 'syntree--style'.                                             ;;
+;;                                                                         ;;
+;; 'syntree-styles-alist' is generated every time 'syntree-new' and        ;;
+;; 'syntree-change-value' are called: it is ;; a list of cons cells (NAME  ;;
+;; . PLIST) where NAME is the value of :name in PLIST.                     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun syntree--p-get (p &optional seq st)
   "Get value for P from plist ST.
@@ -856,7 +854,7 @@ Return an informative error message if it is not."
         (goto-char target)))))
 
 ;;;###autoload
-(defun syntree ()
+(defun syntree-new ()
   "Create new frame with input and output buffers for syntree.
 
 This function also sets the value of `syntree--style' to the one
@@ -1074,6 +1072,11 @@ Call `syntree--refresh' to redraw the tree."
     (setq syntree--style
           (syntree--copy-style (map-elt syntree--styles-alist style)))
     (syntree--refresh)))
+
+(defun syntree-info ()
+  "Read the documentation for `syntree' in the info system."
+  (interactive)
+  (info "syntree"))
 
 (define-derived-mode syntree-mode
   ;; We derive it from 'emacs-lisp-mode' so that we can leverage on

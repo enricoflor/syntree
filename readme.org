@@ -61,7 +61,7 @@ You can install ~syntree~ through [[https://melpa.org/#/syntree][melpa]].
 * Usage
 
 ** Create a new tree
-Upon calling the command ~syntree~ a new frame is created that is
+Upon calling the command ~syntree-new~ a new frame is created that is
 split in two windows: the upper one visits the *input buffer*, the lower
 one visits the *output buffer*.  Both buffers are in ~syntree-mode~.
 
@@ -221,7 +221,7 @@ change will be discarded.
 Select a different style defined in ~syntree-styles-list~, with
 completion, as the current one, and redisplay the tree.
 
-What the current style is right after ~syntree~ is called is determined
+What the current style is right after ~syntree-new~ is called is determined
 by the value of ~syntree-default-style~ (more on this
 [[#default][here]]).
 *** syntree-done (C-c C-c)
@@ -229,7 +229,7 @@ Once you are satisfied with how the tree looks like, you can call
 ~syntree-done~: the input and the output (the source for the tree and
 the tree itself) are added to the kill ring (in that order), the two
 syntree buffers and their dedicated frame are killed, and point is
-back in the position it was when ~syntree~ was called.  You can now
+back in the position it was when ~syntree-new~ was called.  You can now
 yank the tree.
 * Controlling the design of the tree
 
@@ -528,7 +528,7 @@ If the value of ~:der~ is ~nil~, then *all of the properties* described in
 :CUSTOM_ID: default
 :END:
 By default, ~basic~ is the style that trees are designed according to
-when ~syntree~ is called.  If you want ~new-horizontal~ (the one defined
+when ~syntree-new~ is called.  If you want ~new-horizontal~ (the one defined
 [[#define-style][here]]) to be the default, set the value of
 ~syntree-default-style~ accordingly:
 

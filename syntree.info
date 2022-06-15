@@ -1,8 +1,8 @@
-This is readme-for-info.info, produced by makeinfo version 6.8 from
-readme-for-info.texi.
+This is syntree.info, produced by makeinfo version 6.8 from
+syntree.texi.
 
 
-File: readme-for-info.info,  Node: Top,  Next: Introduction,  Up: (dir)
+File: syntree.info,  Node: Top,  Next: Introduction,  Up: (dir)
 
 Syntree - draw plain text constituency trees
 ********************************************
@@ -38,6 +38,7 @@ Usage
 
 The interactive commands
 
+* syntree-info::
 * syntree-change-value (C-c C-v)::
 * syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)::
 * syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)::
@@ -64,7 +65,7 @@ Properties
 
 
 
-File: readme-for-info.info,  Node: Introduction,  Next: Usage,  Prev: Top,  Up: Top
+File: syntree.info,  Node: Introduction,  Next: Usage,  Prev: Top,  Up: Top
 
 1 Introduction
 **************
@@ -97,7 +98,7 @@ of what you can get from ‘syntree’:
                     the  ball
 
    The drawing is done interactively, with the output displayed as you
-type:
+type.
 
    It does not provide functionalities such as drawing arrows between
 nodes.  Once the tree is drawn, however, arrows are rather easily added
@@ -105,8 +106,11 @@ manually with picture-mode
 (https://www.gnu.org/software/emacs/manual/html_node/emacs/Picture-Mode.html)
 (built-in in GNU Emacs).
 
+   You can install ‘syntree’ through melpa
+(https://melpa.org/#/syntree).
+
 
-File: readme-for-info.info,  Node: Usage,  Next: Controlling the design of the tree,  Prev: Introduction,  Up: Top
+File: syntree.info,  Node: Usage,  Next: Controlling the design of the tree,  Prev: Introduction,  Up: Top
 
 2 Usage
 *******
@@ -118,14 +122,14 @@ File: readme-for-info.info,  Node: Usage,  Next: Controlling the design of the t
 * The interactive commands::
 
 
-File: readme-for-info.info,  Node: Create a new tree,  Next: Syntax of the input,  Up: Usage
+File: syntree.info,  Node: Create a new tree,  Next: Syntax of the input,  Up: Usage
 
 2.1 Create a new tree
 =====================
 
-Upon calling the command ‘syntree’ a new frame is created that is split
-in two windows: the upper one visits the *input buffer*, the lower one
-visits the *output buffer*.  Both buffers are in ‘syntree-mode’.
+Upon calling the command ‘syntree-new’ a new frame is created that is
+split in two windows: the upper one visits the *input buffer*, the lower
+one visits the *output buffer*.  Both buffers are in ‘syntree-mode’.
 
    At this point, ‘syntree-mode-map’ is activated in the two buffers
 (more on this *note here: The interactive commands.).  The output buffer
@@ -135,7 +139,7 @@ valid syntree input is detected in it (or whenever the value of
 command—more on that below).
 
 
-File: readme-for-info.info,  Node: Syntax of the input,  Next: The interactive commands,  Prev: Create a new tree,  Up: Usage
+File: syntree.info,  Node: Syntax of the input,  Next: The interactive commands,  Prev: Create a new tree,  Up: Usage
 
 2.2 Syntax of the input
 =======================
@@ -234,7 +238,7 @@ input.
 not, and whether it is indented in any way or not is irrelevant.
 
 
-File: readme-for-info.info,  Node: The interactive commands,  Prev: Syntax of the input,  Up: Usage
+File: syntree.info,  Node: The interactive commands,  Prev: Syntax of the input,  Up: Usage
 
 2.3 The interactive commands
 ============================
@@ -245,6 +249,7 @@ in ‘syntree-mode-map’.
 
 * Menu:
 
+* syntree-info::
 * syntree-change-value (C-c C-v)::
 * syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)::
 * syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)::
@@ -252,9 +257,17 @@ in ‘syntree-mode-map’.
 * syntree-done (C-c C-c)::
 
 
-File: readme-for-info.info,  Node: syntree-change-value (C-c C-v),  Next: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Up: The interactive commands
+File: syntree.info,  Node: syntree-info,  Next: syntree-change-value (C-c C-v),  Up: The interactive commands
 
-2.3.1 syntree-change-value (C-c C-v)
+2.3.1 syntree-info
+------------------
+
+Read the documentation for ‘syntree’ in the info system.
+
+
+File: syntree.info,  Node: syntree-change-value (C-c C-v),  Next: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Prev: syntree-info,  Up: The interactive commands
+
+2.3.2 syntree-change-value (C-c C-v)
 ------------------------------------
 
 Change the value of any *note properties: Properties, with completion,
@@ -267,9 +280,9 @@ after changing a value you reset the style, the change will be
 discarded.
 
 
-File: readme-for-info.info,  Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Next: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Prev: syntree-change-value (C-c C-v),  Up: The interactive commands
+File: syntree.info,  Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Next: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Prev: syntree-change-value (C-c C-v),  Up: The interactive commands
 
-2.3.2 syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)
+2.3.3 syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)
 --------------------------------------------------------------------------------
 
 Increase and reduce (if possible) the value of ‘:hspace’ (see *note
@@ -282,9 +295,9 @@ after changing a value you reset the style, the change will be
 discarded.
 
 
-File: readme-for-info.info,  Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Next: syntree-change-style (C-c C-v),  Prev: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Up: The interactive commands
+File: syntree.info,  Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Next: syntree-change-style (C-c C-v),  Prev: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Up: The interactive commands
 
-2.3.3 syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)
+2.3.4 syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)
 ---------------------------------------------------------------------------
 
 Increase and reduce (if possible) the value of ‘:height’ (see *note
@@ -297,33 +310,33 @@ after changing a value you reset the style, the change will be
 discarded.
 
 
-File: readme-for-info.info,  Node: syntree-change-style (C-c C-v),  Next: syntree-done (C-c C-c),  Prev: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Up: The interactive commands
+File: syntree.info,  Node: syntree-change-style (C-c C-v),  Next: syntree-done (C-c C-c),  Prev: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Up: The interactive commands
 
-2.3.4 syntree-change-style (C-c C-v)
+2.3.5 syntree-change-style (C-c C-v)
 ------------------------------------
 
 Select a different style defined in ‘syntree-styles-list’, with
 completion, as the current one, and redisplay the tree.
 
-   What the current style is right after ‘syntree’ is called is
+   What the current style is right after ‘syntree-new’ is called is
 determined by the value of ‘syntree-default-style’ (more on this *note
 here: Change default style.).
 
 
-File: readme-for-info.info,  Node: syntree-done (C-c C-c),  Prev: syntree-change-style (C-c C-v),  Up: The interactive commands
+File: syntree.info,  Node: syntree-done (C-c C-c),  Prev: syntree-change-style (C-c C-v),  Up: The interactive commands
 
-2.3.5 syntree-done (C-c C-c)
+2.3.6 syntree-done (C-c C-c)
 ----------------------------
 
 Once you are satisfied with how the tree looks like, you can call
 ‘syntree-done’: the input and the output (the source for the tree and
 the tree itself) are added to the kill ring (in that order), the two
 syntree buffers and their dedicated frame are killed, and point is back
-in the position it was when ‘syntree’ was called.  You can now yank the
-tree.
+in the position it was when ‘syntree-new’ was called.  You can now yank
+the tree.
 
 
-File: readme-for-info.info,  Node: Controlling the design of the tree,  Prev: Usage,  Up: Top
+File: syntree.info,  Node: Controlling the design of the tree,  Prev: Usage,  Up: Top
 
 3 Controlling the design of the tree
 ************************************
@@ -340,7 +353,7 @@ switch between *note predefined styles: Define new styles.
 * Change default style::
 
 
-File: readme-for-info.info,  Node: Properties,  Next: Built-in styles,  Up: Controlling the design of the tree
+File: syntree.info,  Node: Properties,  Next: Built-in styles,  Up: Controlling the design of the tree
 
 3.1 Properties
 ==============
@@ -361,7 +374,7 @@ strings or characters.  We first examine the first group.
 * String or character properties::
 
 
-File: readme-for-info.info,  Node: growing,  Next: oneline,  Up: Properties
+File: syntree.info,  Node: growing,  Next: oneline,  Up: Properties
 
 3.1.1 :growing
 --------------
@@ -378,7 +391,7 @@ the value is ‘right’, the root of the tree will be to the left and the
 tree will horizontally grow to the right.
 
 
-File: readme-for-info.info,  Node: oneline,  Next: hspace,  Prev: growing,  Up: Properties
+File: syntree.info,  Node: oneline,  Next: hspace,  Prev: growing,  Up: Properties
 
 3.1.2 :oneline
 --------------
@@ -389,7 +402,7 @@ This property has a boolean value.
 (horizontally or vertically depending on the value of *note growing::).
 
 
-File: readme-for-info.info,  Node: hspace,  Next: height,  Prev: oneline,  Up: Properties
+File: syntree.info,  Node: hspace,  Next: height,  Prev: oneline,  Up: Properties
 
 3.1.3 :hspace
 -------------
@@ -407,7 +420,7 @@ viable value.
 determining vertical space between nodes.
 
 
-File: readme-for-info.info,  Node: height,  Next: roofwidth,  Prev: hspace,  Up: Properties
+File: syntree.info,  Node: height,  Next: roofwidth,  Prev: hspace,  Up: Properties
 
 3.1.4 :height
 -------------
@@ -425,7 +438,7 @@ viable value.
 determining a horizontal dimension despite its name.
 
 
-File: readme-for-info.info,  Node: roofwidth,  Next: roofminwidth,  Prev: height,  Up: Properties
+File: syntree.info,  Node: roofwidth,  Next: roofminwidth,  Prev: height,  Up: Properties
 
 3.1.5 :roofwidth
 ----------------
@@ -457,7 +470,7 @@ under it, a negative one, shorter.
      long leaf
 
 
-File: readme-for-info.info,  Node: roofminwidth,  Next: word-wrap,  Prev: roofwidth,  Up: Properties
+File: syntree.info,  Node: roofminwidth,  Next: word-wrap,  Prev: roofwidth,  Up: Properties
 
 3.1.6 :roofminwidth
 -------------------
@@ -473,7 +486,7 @@ it would have to be less than ‘5’ characters wide.
 viable value.
 
 
-File: readme-for-info.info,  Node: word-wrap,  Next: String or character properties,  Prev: roofminwidth,  Up: Properties
+File: syntree.info,  Node: word-wrap,  Next: String or character properties,  Prev: roofminwidth,  Up: Properties
 
 3.1.7 :word-wrap
 ----------------
@@ -514,7 +527,7 @@ is centered.  If it grows horizontally, it is flushed left or right:
        boy--
 
 
-File: readme-for-info.info,  Node: String or character properties,  Prev: word-wrap,  Up: Properties
+File: syntree.info,  Node: String or character properties,  Prev: word-wrap,  Up: Properties
 
 3.1.8 String or character properties
 ------------------------------------
@@ -566,7 +579,7 @@ which component of the tree is associated with which property.
                                            the    ball
 
 
-File: readme-for-info.info,  Node: Built-in styles,  Next: Define new styles,  Prev: Properties,  Up: Controlling the design of the tree
+File: syntree.info,  Node: Built-in styles,  Next: Define new styles,  Prev: Properties,  Up: Controlling the design of the tree
 
 3.2 Built-in styles
 ===================
@@ -637,7 +650,7 @@ predefined value of ‘syntree-styles-list’ is:
                :one-line t))
 
 
-File: readme-for-info.info,  Node: Define new styles,  Next: Change default style,  Prev: Built-in styles,  Up: Controlling the design of the tree
+File: syntree.info,  Node: Define new styles,  Next: Change default style,  Prev: Built-in styles,  Up: Controlling the design of the tree
 
 3.3 Define new styles
 =====================
@@ -676,45 +689,46 @@ in ‘horizontal’.
 described in *note properties: Properties. *must be defined*.
 
 
-File: readme-for-info.info,  Node: Change default style,  Prev: Define new styles,  Up: Controlling the design of the tree
+File: syntree.info,  Node: Change default style,  Prev: Define new styles,  Up: Controlling the design of the tree
 
 3.4 Change default style
 ========================
 
 By default, ‘basic’ is the style that trees are designed according to
-when ‘syntree’ is called.  If you want ‘new-horizontal’ (the one defined
-*note here: Define new styles.) to be the default, set the value of
-‘syntree-default-style’ accordingly:
+when ‘syntree-new’ is called.  If you want ‘new-horizontal’ (the one
+defined *note here: Define new styles.) to be the default, set the value
+of ‘syntree-default-style’ accordingly:
 
      (setq syntree-default-style 'new-horizontal)
 
 
 
 Tag Table:
-Node: Top91
-Node: Introduction1666
-Node: Usage3022
-Node: Create a new tree3242
-Node: Syntax of the input3980
-Node: The interactive commands6930
-Node: syntree-change-value (C-c C-v)7528
-Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)8200
-Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)9014
-Node: syntree-change-style (C-c C-v)9818
-Node: syntree-done (C-c C-c)10401
-Node: Controlling the design of the tree10955
-Node: Properties11422
-Node: growing11906
-Node: oneline12337
-Node: hspace12641
-Node: height13181
-Node: roofwidth13747
-Node: roofminwidth14271
-Node: word-wrap14820
-Node: String or character properties15751
-Node: Built-in styles17469
-Node: Define new styles19594
-Node: Change default style20900
+Node: Top75
+Node: Introduction1659
+Node: Usage3086
+Node: Create a new tree3298
+Node: Syntax of the input4032
+Node: The interactive commands6974
+Node: syntree-info7581
+Node: syntree-change-value (C-c C-v)7795
+Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)8480
+Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)9286
+Node: syntree-change-style (C-c C-v)10082
+Node: syntree-done (C-c C-c)10661
+Node: Controlling the design of the tree11211
+Node: Properties11670
+Node: growing12146
+Node: oneline12569
+Node: hspace12865
+Node: height13397
+Node: roofwidth13955
+Node: roofminwidth14471
+Node: word-wrap15012
+Node: String or character properties15935
+Node: Built-in styles17645
+Node: Define new styles19762
+Node: Change default style21060
 
 End Tag Table
 
