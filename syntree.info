@@ -1,6 +1,11 @@
 This is syntree.info, produced by makeinfo version 6.8 from
 syntree.texi.
 
+INFO-DIR-SECTION Emacs misc features
+START-INFO-DIR-ENTRY
+* Syntree: (syntree).   draw plain text constituency trees.
+END-INFO-DIR-ENTRY
+
 
 File: syntree.info,  Node: Top,  Next: Introduction,  Up: (dir)
 
