@@ -1,17 +1,26 @@
-#+title: syntree.el
-#+author: Enrico Flor
-#+startup: content
+#+TITLE: Syntree
+#+AUTHOR: Enrico Flor
+#+EMAIL: enrico@eflor.net
 
 [[https://melpa.org/#/syntree][file:https://melpa.org/packages/syntree-badge.svg]]
 
-~syntree~ is a package for GNU Emacs that draws plain text
-constituency trees.  It is meant to be for plain text what packages
-like [[https://www.ctan.org/pkg/qtree][qtree]] or [[https://www.ctan.org/pkg/forest][forest]] are for LaTeX, providing only those features that
-make sense for the plain text format.  ~syntree~ is not specific to
-any major mode (the only thing it does is getting an input as a buffer
-substring, and inserting a different string in the same buffer).  Its
-only external dependency is [[https://elpa.gnu.org/packages/transient.html][transient.el]] (which is built in starting
-with Emacs 28).
+* Content :toc:
+- [[#introduction][Introduction]]
+- [[#usage][Usage]]
+  - [[#create-a-new-tree][Create a new tree]]
+  - [[#syntax-of-the-input][Syntax of the input]]
+  - [[#the-interactive-commands][The interactive commands]]
+- [[#controlling-the-design-of-the-tree][Controlling the design of the tree]]
+  - [[#properties][Properties]]
+  - [[#built-in-styles][Built-in styles]]
+  - [[#define-new-styles][Define new styles]]
+  - [[#change-default-style][Change default style]]
+
+* Introduction
+~syntree~ is a package for GNU Emacs that draws plain text constituency
+trees.  It is meant to be for plain text what packages like [[https://www.ctan.org/pkg/qtree][qtree]] or
+[[https://www.ctan.org/pkg/forest][forest]] are for LaTeX, providing only those features that make sense
+for the plain text format.
 
 While it is written with the linguist's usage in mind, ~syntree~ can
 obviously be used for any sort of tree-like diagram.  Here's an
@@ -36,99 +45,33 @@ the man  Verb      NP
                the  ball
 #+end_example
 
-This package only draws the tree according to some specified
-preferences.  It does not provide functionalities such as drawing
-arrows between nodes.  Once the tree is drawn, however, arrows are
-rather easily added manually with [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Picture-Mode.html][picture-mode]] (built-in in GNU
-Emacs).
+The drawing is done interactively, with the output displayed as you
+type:
+
+#+CAPTION: syntree in action
+#+NAME:   fig:syntree-demo1
+[[./syntree-demo.gif]]
+
+It does not provide functionalities such as drawing arrows between
+nodes.  Once the tree is drawn, however, arrows are rather easily
+added manually with [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Picture-Mode.html][picture-mode]] (built-in in GNU Emacs).
 
 You can install ~syntree~ through [[https://melpa.org/#/syntree][melpa]].
 
-* Options
+* Usage
 
-The shape of the output tree is controlled by five variables:
+** Create a new tree
+Upon calling the command ~syntree~ a new frame is created that is
+split in two windows: the upper one visits the *input buffer*, the lower
+one visits the *output buffer*.  Both buffers are in ~syntree-mode~.
 
-+ ~syntree-smooth-branches~: whether the branches are square or have
-  smooth angles (~nil~ by default, which means square branches).
-+ ~syntree-one-line~: whether or not the leaves are to be set all on
-  the bottom line (~nil~ by default).
-+ ~syntree-padding~: how much white space is used as padding between
-  sister nodes (~2~ by default).
-+ ~syntree-height~: the minimum height of individual stems (~1~ by
-  default).
-+ ~syntree-wrap~: at which width labels and leaves are to be
-  word-wrapped (~0~ by default, which means no word-wrapping at all).
+At this point, ~syntree-mode-map~ is activated in the two buffers (more
+on this [[#commands][here]]).  The output buffer will redisplay the tree every time
+the input buffer has changed and a valid syntree input is detected in
+it (or whenever the value of ~syntree--current-style~ is changed by
+calling some interactive command---more on that below).
 
-The value for these variables can be changed either as a default (by
-specifying it in ~init.el~) or temporarily overridden (more about that
-below).
-
-#+begin_example
-Inputs:
-("abc" "L:def" "ghi xyz")
-("abc" "L:def" ("ghi" "lmn" "xyz"))
-
-                       |
- smooth-branches nil   |  smooth-branchees t
-                       |
-     abc               |      abc
-  .___|__.             |    ___|__
-  |      |             |   /      \
-  L      |             |   L      |
- def  ghi xyz          |  def  ghi xyz
-                       |
------------------------+----------------------
-                       |
- one-line nil          |  one-line t
-                       |
-     abc               |       abc
-  .___|___.            |    .___|___.
-  |       |            |    |       |
-  L      ghi           |    |      ghi
- def   .__|_.          |    |    .__|_.
-       |    |          |    |    |    |
-       |    |          |    L    |    |
-      lmn  xyz         |   def  lmn  xyz
-                       |
------------------------+---------------------
-                       |
- padding 2             |  padding 5
-                       |
-     abc               |       abc
-  .___|__.             |   .____|____.
-  |      |             |   |         |
-  L      |             |   L         |
- def  ghi xyz          |  def     ghi xyz
-                       |
------------------------+---------------------
-                       |
- height 1              |  height 3
-                       |
-     abc               |      abc
-  .___|__.             |       |
-  |      |             |       |
-  L      |             |       |
- def  ghi xyz          |   .___|__.
-                       |   |      |
-                       |   |      |
-                       |   |      |
-                       |   L      |
-                       |  def  ghi xyz
-                       |
------------------------+---------------------
-                       |
- wrap 0                |  wrap 2
-                       |
-     abc               |     abc
-  .___|__.             |   .__|_.
-  |      |             |   |    |
-  L      |             |   L    |
- def  ghi xyz          |  def  ghi
-                       |       xyz
-                       |
-#+end_example
-
-* Syntax of the input
+** Syntax of the input
 
 The input is a substring of the buffer made up by parentheses and
 objects formatted as strings.  This input is ~read~ as a list.  Thus,
@@ -168,7 +111,7 @@ abc    ____|____
 #+end_example
 
 Terminal nodes can themselves be labeled: the label and the text are
-separated by a ~:~.  Here some examples of terminals:
+separated by a ~:~ (i.e., a colon).  Here some examples of terminals:
 
 #+begin_example
  ("" "XP:abcd")  |   |
@@ -234,70 +177,361 @@ the man  ._____|____.
 Whether the input string in the buffer is split in different lines or
 not, and whether it is indented in any way or not is irrelevant.
 
-* The interactive commands
+** The interactive commands
+:PROPERTIES:
+:CUSTOM_ID: commands
+:END:
 
-There are three interactive commands:
+These are all the commands that are available in ~syntree-mode~ buffers,
+each with the default keybinding.  You can define your own keybindings
+in ~syntree-mode-map~.
 
-+ ~syntree-insert~
-+ ~syntree-kill~
-+ ~syntree-custom~
+*** syntree-change-value (C-c C-v)
 
-Their input is the first sexp that starts with ~(~ after point.  This
-means that the input can be any subconstituent of an input string.
-Here, point is in a position that will cause only the VP node to be
-rendered as a tree:
+Change the value of any [[#properties][properties]], with completion, and
+redisplay the tree according to the new value.
+
+Note that changing values this way does not change the value of the
+property in the current style, neither permanently nor for the
+duration of the Emacs session.  The value is simply temporarily
+overwritten.  If, after changing a value you reset the style, the
+change will be discarded.
+
+*** syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)
+Increase and reduce (if possible) the value of ~:hspace~ (see
+[[#properties][properties]]).
+
+Note that changing values this way does not change the value of the
+property in the current style, neither permanently nor for the
+duration of the Emacs session.  The value is simply temporarily
+overwritten.  If, after changing a value you reset the style, the
+change will be discarded.
+
+*** syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)
+Increase and reduce (if possible) the value of ~:height~ (see
+[[#properties][properties]]).
+
+Note that changing values this way does not change the value of the
+property in the current style, neither permanently nor for the
+duration of the Emacs session.  The value is simply temporarily
+overwritten.  If, after changing a value you reset the style, the
+change will be discarded.
+
+*** syntree-change-style (C-c C-v)
+Select a different style defined in ~syntree-styles-list~, with
+completion, as the current one, and redisplay the tree.
+
+What the current style is right after ~syntree~ is called is determined
+by the value of ~syntree-default-style~ (more on this
+[[#default][here]]).
+*** syntree-done (C-c C-c)
+Once you are satisfied with how the tree looks like, you can call
+~syntree-done~: the input and the output (the source for the tree and
+the tree itself) are added to the kill ring (in that order), the two
+syntree buffers and their dedicated frame are killed, and point is
+back in the position it was when ~syntree~ was called.  You can now
+yank the tree.
+* Controlling the design of the tree
+
+~syntree~ produces a tree according to a specific style.  A style is a
+plist that associates properties to values.  Interactively, one can
+switch between [[#define-style][predefined styles]].
+** Properties
+:PROPERTIES:
+:CUSTOM_ID: properties
+:END:
+
+The properties defining how a tree looks like can be divided in two:
+the first group has booleans, integers or symbols as value, the second
+has strings or characters.  We first examine the first group.
+*** :growing
+:PROPERTIES:
+:CUSTOM_ID: growing
+:END:
+This property accepts one of these four *symbols* as value:
+
++ ~down~
++ ~up~
++ ~right~
++ ~left~
+
+It determines the direction of growth of the tree: for example, if the
+value is ~right~, the root of the tree will be to the left and the tree
+will horizontally grow to the right.
+*** :oneline
+This property has a boolean value.
+
+If it is ~t~, it means that all terminal nodes will be aligned
+(horizontally or vertically depending on the value of [[#growing][:growing]]).
+*** :hspace
+This property accepts an integer as value.
+
+It determines the amount of space between two sister nodes.  It can be
+increased or reduced interactively with ~syntree-increase-padding~ and
+~syntree-reduce-padding~.
+
+Values smaller than 1 are interpreted as the smallest graphically
+viable value.
+
+Note that if the tree grows horizontally, ~:hspace~ ends up determining
+vertical space between nodes.
+*** :height
+This property accepts an integer as value.
+
+It determines the length of the stem connecting mother and daughter
+nodes.  It can be increased or reduced interactively with
+~syntree-increase-height~ and ~syntree-reduce-height~.
+
+Values smaller than 1 are interpreted as the smallest graphically
+viable value.
+
+Note that if the tree grows horizontally, ~:height~ ends up determining
+a horizontal dimension despite its name.
+*** :roofwidth
+:PROPERTIES:
+:CUSTOM_ID: roofwidth
+:END:
+This property accepts an integer as value.
+
+A positive value means that the roof will be larger than the text
+under it, a negative one, shorter.
 
 #+begin_example
-("Sentence"
-    ("NP" "T:the" "N:man")
-   █("VP" "Verb:hit"
-    ("NP" "T:the" "N:ball")))
+:roofwidth 0
 
-      VP
-  .___|___.
-  |       |
-Verb      NP
- hit   .__|__.
-       |     |
-       T     N
-      the  ball
+    |
+.___|___.
+|_______|
+long leaf
+
+:roofwidth 2
+
+      |
+._____|_____.
+|___________|
+  long leaf
+
+:roofwidth -1
+
+    |
+ .__|__.
+ |_____|
+long leaf
+#+end_example
+*** :roofminwidth
+This property accepts an integer as value.
+
+It determines what the minimal width of a roof is.  If its value is,
+say, ~5~, no roof will be drawn (despite what the input is) if the width
+of the text under it and the value of [[#roofwidth][:roofwidth]] determine that it
+would have to be less than ~5~ characters wide.
+
+Values smaller than 1 are interpreted as the smallest graphically
+viable value.
+*** :word-wrap
+:PROPERTIES:
+:CUSTOM_ID: wordwrap
+:END:
+This property accepts an integer as value.
+
+A value smaller than 1 means that strings in the input are never
+broken in different lines except at new line characters.  Any other
+value causes the string to be word wrapped at that given length:  for
+instance, a value of 4 will cause the string "young boy" to be split
+in two.
+
+#+begin_example
+:word-wrap 0
+
+    |
+young boy
+
+:word-wrap 4
+
+  |
+young
+ boy
 #+end_example
 
-Two commands are basic, and draw the tree according to the default
-values of the variables.
+Note that depending on the value of [[#growing][:growing]], the wrapped text will
+have different apperance.  If the trees grows vertically, the text is
+centered.  If it grows horizontally, it is flushed left or right:
 
-+ ~syntree-insert~: inserts the tree at the first line after point
-  that only contains whitespace (or at the end of the buffer, if there
-  is no such line).
-+ ~syntree-kill~: adds the tree as the most recent kill in the
-  kill-ring, for you to yank wherever you prefer.
+#+begin_example
+:word-wrap 4
+:growing right
 
-The value of ~syntree-padding~ can be temporarily overridden with
-these two commands by passing a numeric value as a prefix argument.
-That is, ~C-u 10 syntree-insert~ inserts a tree where sister nodes are
-separated by ten white spaces.
+---young
+   boy
 
-The third command, ~syntree-custom~, allows you to specify the value
-of each of the five variables.  It does so by displaying a transient
-pop-up that provides you with convenient keys to evaluate these
-interactive functions, and visual feedback about the current values in
-the echo area:
+:word-wrap 4
+:growing left
 
-+ ~syntree--toggle-smooth~
-+ ~syntree--toggle-one-line~
-+ ~syntree--set-padding~
-+ ~syntree--set-height~
-+ ~syntree--set-wrap~
+young
+  boy--
+#+end_example
+*** String or character properties
+These are all properties that determine which character is used to
+draw each part of the tree.  The values can be strings (containing one
+character) or single characters.
 
-If these functions are called from outside the transient (e.g., via
-~M-x syntree--toggle-smooth~), they just set a new value for the
-corresponding variable for the rest of the Emacs session.
+Below is an example tree (vertical, growing down) that illustrates
+which component of the tree is associated with which property.
 
-#+CAPTION: Transient for ~syntree-custom~.
-#+NAME:   fig:transient-screenshot
-[[./transient-screenshot.png]]
+#+begin_example
+:hbranch "1"
+:branchcenter "2"
+:intersection "3"
+:l-intersection "4"
+:r-intersection "5"
+:stem "6"
+:l-stem "7"
+:r-stem "8"
+:roofstem "9"
+:rooftop "A"
+:rooftopangle "B"
+:roofbottom "C"
+:roofbottomangle "D"
 
-Once the values are set, ~i~ and ~k~ evaluate ~syntree-insert~ and
-~syntree-kill~ respectively, and restore the default value of the
-variables.  With ~!i~ and ~!k~, the values specified are saved as the
-new defaults for the rest of the Emacs session.
+("Sentence"
+ "_NP:the young women"
+ "Aux:may"
+ ("VP" "Verb:hit"
+  ("NP" "T:the" "N:ball")))
+
+                    Sentence
+                        6
+                        6
+         411111111111111211111111111115
+         7              6             8
+         6              6            VP
+         NP            Aux            6
+BAAAAAAAA9AAAAAAAAB    may            6
+DCCCCCCCCCCCCCCCCCD             411111211115
+  the young women               7          8
+                                6          NP
+                              Verb         6
+                               hit         6
+                                       411121115
+                                       7       8
+                                       6       6
+                                       T       N
+                                      the    ball
+#+end_example
+** Built-in styles
+~syntree~ comes with four built-styles to provide you with a basis to
+define your own (see [[#define-style][here]]).  That is, the predefined value of
+~syntree-styles-list~ is:
+
+#+begin_src emacs-lisp
+'((:name basic
+         :der nil
+         :growing down
+         :hspace 0
+         :one-line nil
+         :height 0
+         :hbranch "_"
+         :branchcenter "|"
+         :intersection "."
+         :l-intersection "."
+         :r-intersection "."
+         :stem "|"
+         :l-stem "|"
+         :r-stem "|"
+         :roofstem "|"
+         :rooftop "_"
+         :rooftopangle "."
+         :roofbottom "_"
+         :roofbottomangle "|"
+         :roofwidth 0
+         :roofminwidth 3
+         :word-wrap 0)
+  (:name horizontal
+          :der nil
+          :growing right
+          :hspace 0
+          :one-line nil
+          :height 2
+          :hbranch "|"
+          :branchcenter "+"
+          :intersection "+"
+          :l-intersection "+"
+          :r-intersection "+"
+          :stem "-"
+          :l-stem "-"
+          :r-stem "-"
+          :roofstem "|"
+          :rooftop "|"
+          :rooftopangle "|"
+          :roofbottom ""
+          :roofbottomangle ""
+          :roofwidth 0
+          :roofminwidth 1
+          :word-wrap 5)
+  (:name basic-upwards
+          :der basic
+          :growing up
+          :hbranch "-"
+          :branchcenter "+"
+          :intersection "+"
+          :l-intersection "+"
+          :r-intersection "+"
+          :rooftop "-"
+          :roofbottom " "
+          :roofstem "+"
+          :roofbottomangle " "
+          :rooftopangle "+")
+  (:name basic-one-line
+          :der basic
+          :one-line t))
+#+end_src
+** Define new styles
+:PROPERTIES:
+:CUSTOM_ID: define-style
+:END:
+
+Defining a new style is a matter of adding a new properly constructed
+plist to the list ~syntree-styles-list~.
+
+There are *two special properties* that must be defined in every style:
+
++ ~:name~
++ ~:der~
+
+Both accept a symbol as value.  ~:name~ specifies the name of the style,
+~:der~ specifies the name of the style from which the present one
+derives.
+
+For example, say that I want to define a new style, ~new-horizontal,~
+that is identical to the built in one named ~horizontal~ except for two
+things: I want trees in ~new-horizontal~ style to grow from right to
+left and to have all terminals of the tree be aligned.
+
+The briefest way to define ~new-horizontal~ is thus:
+
+#+begin_src emacs-lisp
+(add-to-list
+ 'syntree-styles-list
+ '(:name new-horizontal
+   :der horizontal
+   :one-line t
+   :growing left))
+#+end_src
+
+All properties that are not defined in ~new-horizontal~ are looked up in
+~horizontal~.
+
+If the value of ~:der~ is ~nil~, then *all of the properties* described in
+[[#properties][properties]] *must be defined*.
+** Change default style
+:PROPERTIES:
+:CUSTOM_ID: default
+:END:
+By default, ~basic~ is the style that trees are designed according to
+when ~syntree~ is called.  If you want ~new-horizontal~ (the one defined
+[[#define-style][here]]) to be the default, set the value of
+~syntree-default-style~ accordingly:
+
+#+begin_src emacs-lisp
+(setq syntree-default-style 'new-horizontal)
+#+end_src

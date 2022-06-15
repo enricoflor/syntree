@@ -5,8 +5,8 @@
 ;; Author: Enrico Flor <enrico@eflor.net>
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
 ;; URL: https://github.com/enricoflor/syntree
-;; Version: 0.1.0
-;; Package-Requires: ((emacs "27.1") (transient "0.3.7"))
+;; Version: 1.0.0
+;; Package-Requires: ((emacs "27.1"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -37,15 +37,15 @@
 ;;
 ;; For full documentation, see the readme file at
 ;;          <https://github.com/enricoflor/syntree>
+;; or the info page installed with the package.
 
 ;;; Code:
 
 (require 'cl-lib)
-(require 'transient)
-(eval-when-compile
-  (require 'subr-x))
+(require 'map)
+(eval-when-compile (require 'subr-x))
 
-;; Global variables
+;;; Global variables
 
 (defgroup syntree nil
   "Generate plain text constituency trees."
@@ -54,374 +54,689 @@
                    "https://github.com/enricoflor/syntree")
   :group 'convenience)
 
-;; These five variables determine the shape of the output tree and are
-;; meant for the user to set.
+;;; Styles related functions and variables
 
-(defcustom syntree-padding 2
-  "The minimal amount of spaces between any two nodes.
-It can be temporarily overidden by passing a numerical prefix
-argument when calling one of the interactive functions."
-  :type 'integer
-  :group 'syntree)
+(defconst syntree-properties
+  '(:growing
+    :hspace
+    :one-line
+    :height
+    :hbranch
+    :branchcenter
+    :intersection
+    :l-intersection
+    :r-intersection
+    :stem
+    :l-stem
+    :r-stem
+    :roofstem
+    :rooftop
+    :rooftopangle
+    :roofbottom
+    :roofbottomangle
+    :roofwidth
+    :roofminwidth
+    :word-wrap)
+  "Properties that define the the style of a tree.
 
-(defcustom syntree-wrap 0
-  "If less than 1, don't wrap terminal strings, else if N, wrap at N length.
-If you set this variable to 10, the text of leaves and of labels
-will be, if possible, word-wrapped so that each line is not
-longer than 10."
-  :type 'integer
-  :group 'syntree)
+In addition to any number of these properties, a style must
+assign a value to the special keywords ':der' and ':name'.")
 
-(defcustom syntree-height 1
-  "If more than 1, add as many \"|\" to lengthen the stems."
-  :type 'integer
-  :group 'syntree)
+(defvar syntree--style-basic
+  '(:name basic
+          :der nil
+          :growing down
+          :hspace 0
+          :one-line nil
+          :height 0
+          :hbranch "_"
+          :branchcenter "|"
+          :intersection "."
+          :l-intersection "."
+          :r-intersection "."
+          :stem "|"
+          :l-stem "|"
+          :r-stem "|"
+          :roofstem "|"
+          :rooftop "_"
+          :rooftopangle "."
+          :roofbottom "_"
+          :roofbottomangle "|"
+          :roofwidth 0
+          :roofminwidth 3
+          :word-wrap 0)
+  "Basic vertical style for `syntree' trees.
 
-(defcustom syntree-smooth-branches nil
-  "If nil, the output tree has square branches, if t, smooth.
-This value is reset at every invocation of an interactive
-function."
-  :type 'boolean
-  :group 'syntree)
+This style can be used as basis for others since it specifies a
+value for all properties in `syntree-properties'.")
 
-(defcustom syntree-one-line nil
-  "If t, the terminals in the output are on the same line.
-If nil, the terminals are at different heights.  This value is
-reset at every invocation of an interactive function."
-  :type 'boolean
-  :group 'syntree)
+(defvar syntree--style-horizontal
+  '(:name horizontal
+          :der nil
+          :growing right
+          :hspace 0
+          :one-line nil
+          :height 2
+          :hbranch "|"
+          :branchcenter "+"
+          :intersection "+"
+          :l-intersection "+"
+          :r-intersection "+"
+          :stem "-"
+          :l-stem "-"
+          :r-stem "-"
+          :roofstem "|"
+          :rooftop "|"
+          :rooftopangle "|"
+          :roofbottom ""
+          :roofbottomangle ""
+          :roofwidth 0
+          :roofminwidth 1
+          :word-wrap 5)
+  "Basic horizontal style for `syntree' trees.
 
-;; Basic string functions
+This style can be used as basis for others since it specifies a
+value for all properties in `syntree-properties'.")
 
-(defun syntree--fill (s p w)
+(defvar syntree--style-basic-upwards
+  '(:name basic-upwards
+          :der basic
+          :growing up
+          :hbranch "-"
+          :branchcenter "+"
+          :intersection "+"
+          :l-intersection "+"
+          :r-intersection "+"
+          :rooftop "-"
+          :roofbottom " "
+          :roofstem "+"
+          :roofbottomangle " "
+          :rooftopangle "+"))
+
+(defvar syntree--style-basic-one-line
+  '(:name basic-one-line
+          :der basic
+          :one-line t))
+
+(defvar syntree-styles-list '()
+  "List of plists that define a style for syntree trees.")
+
+(setq syntree-styles-list (mapcar #'eval
+                                  '(syntree--style-basic
+                                    syntree--style-horizontal
+                                    syntree--style-basic-upwards
+                                    syntree--style-basic-one-line)))
+
+(defvar syntree-default-style 'basic
+  "Initial style for syntree trees.
+
+Its value must be the value for the property ':name' in one plist
+in `syntree-styles-list'.")
+
+(defvar-local syntree--style nil
+  "Style for the current syntree input buffer.")
+
+(defvar syntree--current-style nil
+  "Style that informs `syntree--p-get'.")
+
+(defvar syntree--styles-alist '()
+  "Alist constructed from `syntree-styles-list'.
+
+Each element is a cons (NAME . PLIST).")
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; All stored styles are in 'syntree-styles-list', a list of plists.      ;;
+;;                                                                        ;;
+;; There is a special style, 'syntree--style' (a buffer local variable):  ;;
+;; 'syntree' sets the value of 'syntree--style' to the plist associated   ;;
+;; to 'syntree-default-style', which is a symbol that is the car of a     ;;
+;; cell in 'syntree-styles-list'.  Functions that change the style or     ;;
+;; manipulate current values do so operating on the plist                 ;;
+;; 'syntree--style'.                                                      ;;
+;;                                                                        ;;
+;; Every time 'syntree--refresh' is called, the value of                  ;;
+;; 'syntree--current-style' is set to the one of 'syntree--style'.  If    ;;
+;; multiple syntree buffers are open, they can each have a different      ;;
+;; value for 'syntree--style'.                                            ;;
+;;                                                                        ;;
+;; 'syntree-styles-alist' is generated every time 'syntree' and           ;;
+;; 'syntree-change-value' are called: it is ;; a list of cons cells (NAME ;;
+;; . PLIST) where NAME is the value of :name in PLIST.                    ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun syntree--p-get (p &optional seq st)
+  "Get value for P from plist ST.
+
+If SEQ is non-nil, return a list containing the value of P, if
+that value is a character.
+
+If ST is nil, it defaults to `syntree--style'.  If there
+is no value for P in ST, return the value for P in the plist
+specified as value for ':der' in plist ST."
+  (unless (memq p syntree-properties)
+    (user-error "Property is not defined"))
+  (let* ((style (or (map-elt syntree--styles-alist st)
+                    syntree--current-style))
+         (der (map-elt style :der)))
+    ;; If the value of :der is missing or refers to a non defined
+    ;; style, we need to quit.
+    (cond ((and (not (memq :der (map-keys style))))
+           (user-error "Malformed style plist: missing :der value"))
+          ((and der (not (map-elt syntree--styles-alist der)))
+           (user-error (format "%s not defined" der)))
+          (t t))
+    (let ((property (when (memq p (map-keys style)) (map-elt style p))))
+      (cond ((and (memq p (map-keys style)) seq (characterp property))
+             (list property))
+            ((memq p (map-keys style)) property)
+            (t (syntree--p-get p seq der))))))
+
+;;; Basic string functions
+
+(defun syntree--reverse (direction x)
+  "Reverse X (a string or a list) depending on DIRECTION.
+
+DIRECTION can be either ':down', ':up', ':right' or ':left'."
+  (let ((dir (or direction (syntree--p-get :growing))))
+    ;; If the tree grows upward, then of course we want to reverse the
+    ;; list.  But the same is true if the growth is to the left:
+    ;; because the strings will be transformed, and the first string
+    ;; will end up being the last slice, etc.
+    (if (or (eq dir 'up) (eq dir 'left)) (nreverse x) (identity x))))
+
+(defun syntree--verticalize-text (direction l)
+  "With L a list of strings, return an adjusted list.
+
+The output of this function is a list of strings that will be
+identical to those in L if the tree is turned from vertical to
+horizontal.
+
+Return L if DIRECTION is not 'left' or 'right'."
+  (if (or (eq direction 'left) (eq direction 'right))
+      (thread-last l
+                   (syntree--homogenize-length 'list nil direction)
+                   (mapcar #'syntree--string-to-list)
+                   (mapcar #'(lambda (x) (syntree--reverse direction x)))
+                   (nreverse)
+                   (syntree--zip-concat-lists-of-strings ""))
+    (identity l)))
+
+(defun syntree--horizontalize-text (direction l)
+  "With L a list of strings, return an adjusted list.
+
+The output of this function is a list of strings that will be
+identical to those in L if the tree is turned from vertical to
+horizontal.
+
+Return L if DIRECTION is not 'left' or 'right'."
+  (if (or (eq direction 'left) (eq direction 'right))
+      (let ((disassembled (thread-last l
+                                       (mapcar #'syntree--string-to-list)
+                                       (syntree--reverse nil))))
+        (nreverse (syntree--zip-concat-lists-of-strings "" disassembled)))
+    (identity l)))
+
+(defun syntree--fill (p w right-or-left s)
   "If S is shorter than W, pad right and left with P.
+
+If RIGHT-OR-LEFT is 'right' or 'left', just pad at the right or
+left of S, respectively.
+
 Always return a string that is at least as long as W."
   (let* ((diff (max 0 (- w (length s))))
          (post (/ diff 2))
          (pre (- diff post)))
-    (concat (apply #'concat (make-list pre p))
-            s
-            (apply #'concat (make-list post p)))))
+    (cond ((eq right-or-left 'right)
+           (concat s (apply #'concat (make-list diff p))))
+          ((eq right-or-left 'left)
+           (concat (apply #'concat (make-list diff p)) s))
+          (t (concat (apply #'concat (make-list pre p))
+                     s
+                     (apply #'concat (make-list post p)))))))
+
+(defun syntree--list-fill (s n l)
+  "If L has less than N elements, add S to get there.
+
+L is a list of string, S is a string, N is an integer.  Return L
+if its length is at least N.  Otherwise, add and append as many S
+to L until the length is N."
+  (let* ((diff (max 0 (- n (length l))))
+         (post (/ diff 2))
+         (pre (- diff post)))
+    (append (make-list post s) l (make-list pre s))))
 
 (defun syntree--wrap-string (s w)
   "Word-wrap string S at width W.  If W < 1, don't wrap."
-  (let ((wrap
-         (cond ((not (numberp w))
-                most-positive-fixnum)
-               ((< w 1)
-                most-positive-fixnum)
-               (t w))))
+  (let ((wrap (cond ((not (numberp w))
+                     most-positive-fixnum)
+                    ((< w 1)
+                     most-positive-fixnum)
+                    (t w))))
     (with-temp-buffer
       (insert s)
       (goto-char (point-min))
       (let ((fill-column wrap)
             (adaptive-fill-mode nil))
         (fill-region (point-min) (point-max)))
-      (buffer-string))))
+      (buffer-substring-no-properties (point-min) (point-max)))))
 
-;; Converting leaf strings into terminal nodes
+;;; Converting leaf strings into terminal nodes
 
-(defun syntree--split-and-wrap (s)
+(defun syntree--split-and-wrap (s &optional width)
   "Split S at \"\\n\", wrap at desired length, and split again.
-Return a list of strings."
-  (flatten-tree
-   (mapcar (lambda (x) (split-string x "[\f\t\n\r\v]+" t))
-           (mapcar (lambda (x) (syntree--wrap-string x syntree-wrap))
-                   (split-string (string-trim s)
-                                 "[\f\t\n\r\v]+" t)))))
 
-(defun syntree--split-leaf-string (s)
-  "Take a string S and return a list of label and text strings.
+The desired length is the value for ':word-wrap' in
+`syntree--current-style' if WIDTH is nil, otherwise is WIDTH.
+
+Return a list of strings."
+  ;; (when ())
+  (let ((w (or width (syntree--p-get :word-wrap))))
+    (if (string-blank-p s)
+        (list "")
+      (thread-last
+        s
+        (string-trim)
+        (funcall #'(lambda (x) (split-string x "[\f\t\n\r\v]+" t)))
+        (mapcar #'(lambda (x) (syntree--wrap-string x w)))
+        (mapcar #'(lambda (x) (split-string x "[\f\t\n\r\v]+" t)))
+        (flatten-tree)))))
+
+(defun syntree--gen-roof (width)
+  "Generate a roof of width WIDTH."
+  (let* ((min (if (> 1 (syntree--p-get :roofminwidth))
+                  1
+                (syntree--p-get :roofminwidth)))
+         (raw-w (+ width (* 2 (syntree--p-get :roofwidth))))
+         (w (if (< raw-w 1) 1 raw-w))
+         (stem (if (syntree--p-get :roofstem)
+                   (syntree--p-get :roofstem)
+                 ;; If there is no special value for :roofstem, just
+                 ;; use the value of :stem
+                 (syntree--p-get :stem)))
+         (raw-top (syntree--fill (syntree--p-get :rooftop) w nil stem))
+         (raw-bottom (apply #'concat
+                            (make-list w (syntree--p-get :roofbottom))))
+         (top (if (> w 2)
+                  (replace-regexp-in-string
+                   "^.\\|.$"
+                   (syntree--p-get :rooftopangle t)
+                   raw-top)
+                raw-top))
+         (bottom (if (> w 2)
+                     (replace-regexp-in-string
+                      "^.\\|.$"
+                      (syntree--p-get :roofbottomangle t)
+                      raw-bottom)
+                raw-bottom)))
+    (unless (< w min) (list top bottom))))
+
+(defun syntree--homogenize-length (return-obj width right-or-left &rest str)
+  "Pad STR with whitespace to make it as wide as the longest STR.
+
+STR are either strings or lists of strings.  If WIDTH is non-nil,
+make all strings in the output at least as wide as WIDTH.
+
+If RIGHT-OR-LEFT is 'right' or 'left', just pad at the right or
+left of S, respectively.  If it is nil, pad on both sides.
+
+If RETURN-OBJ is 'node', return a node object instead of a list
+of strings (that is, a list whose car is an integer, the width of
+the lists in the cdr.).
+
+Always remove empty strings from the input."
+  (let* ((strings (thread-last
+		    str
+		    (apply #'list)
+		    (flatten-tree)
+		    (cl-delete-if-not #'(lambda (x) (or x
+							(stringp x)
+							(> (length x) 0))))))
+         ;; We make the grand union of all STR and we only keep the
+         ;; strings
+         (w (or width (apply #'max (mapcar #'length strings))))
+         ;; The node will be the list whose car is the max length in
+         ;; integer and the cdr is the list of strings, each filled as
+         ;; to be max-length long.
+         (n (cons w
+                  (mapcar #'(lambda (s) (syntree--fill " " w
+                                                       right-or-left s))
+                          strings))))
+    ;; We return the node unless RETURN-NODE is nil, in which case we
+    ;; only return the list of strings.
+    (if (eq return-obj 'node) n (cdr n))))
+
+(defun syntree--split-string (input-obj return-obj direction s
+                                        &optional branch-string)
+  "Take a string S and return the label or the terminal.
+
+If INPUT-OBJ is 'leaf', also split S between a label and the
+text.  If it is 'label', don't do anything about colons.
+
+BRANCH-STRING is the string containing the branch connecting.
+
+Always return a list of strings: if RETURN-OBJ is 'label', return
+the label, if it is 'terminal', return the terminal.  The value
+of RETURN-OBJ is ignored if INPUT-OBJ is 'label' (labels are not
+divided between labels and text).
+
 Whatever comes before the first \":\" is going to be the label.
-The text can be either one string or as many strings as there are
-newlines in the input or as a result or 'syntree--wrap-string' to
-the wrap length specified by 'syntree-wrap'."
-  (let* ((str
-          (string-trim s))
-         (str-one-line
-          (replace-regexp-in-string "\n" "" str))
-         (raw-label
-          (if (string= (string-trim-right str-one-line ":.*$")
-                       str)
-              ""
-            (string-trim-right str-one-line ":.*$")))
-         (raw-text
-          (string-trim-left str "^[^:]*:")))
-    (cons raw-label
-          (syntree--split-and-wrap raw-text))))
+
+If there is no label and RETURN-OBJ is 'label', return a list
+containing the empty string.
+
+If DIRECTION is ':right' or ':left', return a list with the
+strings transformed accordingly."
+  ;; If the label is empty, just return nil
+  (when (and (eq input-obj 'label) (string-blank-p (string-trim s))) nil)
+  (let* ((leaf-split (split-string (string-trim s) ":"))
+         (text (if (= (length leaf-split) 1) leaf-split (cdr leaf-split)))
+         ;; I actually can't reconstruct now why this weird inversion
+         ;; is needed.  Probably because the tree is internally
+         ;; constructed as if it grew to the right.  Now if PAD is
+         ;; non-nil, it means that the growth is horizontal
+         (dir (when (or (eq direction 'right) (eq direction 'left))
+                direction))
+         (actual-str (cond ((eq input-obj 'label) s)
+                           ;; for the next two conditions, input-obj
+                           ;; is assumed to be leaf!
+                           ((eq return-obj 'label)
+                            (if (= (length leaf-split) 1)
+                                ""
+                              (string-remove-prefix "_" (car leaf-split))))
+                           ((eq return-obj 'terminal)
+                            (string-join text ":"))))
+         (string-list (thread-last actual-str
+                                   (syntree--split-and-wrap)
+                                   (syntree--reverse direction)))
+         (p-string-list (thread-last string-list
+                                     (syntree--homogenize-length 'list nil dir)
+                                     (syntree--verticalize-text direction))))
+    (if (not branch-string)
+        p-string-list
+      (let* ((br-segments (syntree--split-branch branch-string))
+             (label-width (apply #'max (mapcar #'length string-list))))
+        (if (> label-width (length (car br-segments)))
+            ;; If the label is larger than the branch (not the branch
+            ;; string, the branch!), then just center each string in
+            ;; label-list, which means just give me the same thing as
+            ;; you'd have without the branch
+            p-string-list
+          ;; Otherwise, center each string in label-list relative to the
+          ;; branch, and then pad left and right with the left and right
+          ;; offsets.
+          (thread-last
+            string-list
+            (syntree--verticalize-text direction)
+            (mapcar #'(lambda (x) (syntree--fill " "
+                                                 (length (car br-segments))
+                                                 nil
+                                                 x)))
+            (mapcar #'(lambda (x) (concat (cadr br-segments)
+                                          x
+                                          (caddr br-segments))))))))))
 
 (defun syntree--gen-leaf (s)
   "Convert the string S into a node.
-Return a list of whose car is the numerical value of the width of
+
+Return a list whose car is the numerical value of the width of
 the node, and whose cdr is a list of strings."
-  (let* ((leaf-list
-          (syntree--split-leaf-string s))
-         (width
-          (apply #'max
-                 (mapcar #'length leaf-list)))
-         (padded-leaf-list
-          (mapcar (lambda (x) (syntree--fill x " " width))
-                  (cdr leaf-list)))
-         (label
-          (if (or (string= "_" (car leaf-list))
-                  (string-blank-p (car leaf-list)))
-              (syntree--fill "|" " " width)
-            (syntree--fill (string-remove-prefix "_" (car leaf-list))
-                           " " width)))
-         (stem
-          (if (> syntree-height 1)
-              (make-list syntree-height (syntree--fill "|" " " width))
-            (syntree--fill "|" " " width))))
-    (cons width
-          (mapcan #'flatten-tree
-                  (list
-                   stem
-                   label
-                   (when (and (string-prefix-p "_" (car leaf-list))
-                              (> width 2))     ; add roof
-                     (list
-                      (replace-regexp-in-string "^_\\|_$" "."
-                                                (syntree--fill "|" "_" width))
-                      (replace-regexp-in-string "^_\\|_$" "|"
-                                                (apply #'concat
-                                                       (make-list width "_")))))
-                   padded-leaf-list)))))
+  (let* ((direction (syntree--p-get :growing))
+         (label (or (syntree--split-string 'leaf 'label direction s)
+                    '("")))
+         (text (or (syntree--split-string 'leaf 'terminal direction s)
+                   '("")))
+         (max-w-label (apply #'max (mapcar #'length label)))
+         (max-w-text (apply #'max (mapcar #'length text)))
+         (roof-w (+ max-w-text (* 2 (syntree--p-get :roofwidth))))
+         ;; roof will be nil if the width ends up being less than 3
+         (roof (syntree--gen-roof max-w-text))
+         (roof-p (and (string-match ":" s)
+                      (string-prefix-p "_" s)
+                      roof))
+         (roof-size (if roof-p roof-w 0))
+         (roof-string (when roof-p roof))
+         (max-size (apply #'max (list roof-size max-w-text max-w-label)))
+         ;; If :height is 0 or less, we still want 1 stem
+         (height (if (> 1 (syntree--p-get :height))
+                     1
+                   (syntree--p-get :height)))
+         (stem-list (thread-last (syntree--p-get :stem)
+                                 (make-list height)
+                                 (syntree--homogenize-length nil
+                                                             max-size
+                                                             nil))))
+    (thread-last (list stem-list label roof-string text)
+                 (apply #'syntree--homogenize-length 'node nil nil)
+                 (cl-delete-if #'(lambda (s) (and (stringp s)
+                                                  (string-blank-p s)))))))
+
+(defun syntree--string-to-list (s)
+  "Convert string S into a list of strings."
+  (let ((list-of-chars (string-to-list s)))
+    (mapcar #'char-to-string list-of-chars)))
 
 (defun syntree--replace-terminal-strings (l)
   "Replace every terminal string in L with the node it represents.
+
 Every string in L that is not the first member of a list is a
-terminal, and before building the tree with 'syntree--merge' it
+terminal, and before building the tree with `syntree--merge' it
 must be replaced with a node: a list whose car is a numerical
 value (the width of the node) and whose cdr is a list of strings.
-Each node is the output of 'syntree--gen-leaf'."
+Each node is the output of `syntree--gen-leaf'."
   (cons (car l)
-        (mapcar
-         (lambda (x) (if (stringp x)
-                         (syntree--gen-leaf x)
-                       (syntree--replace-terminal-strings x)))
-         (cdr l))))
+        (thread-last
+          l
+          (cdr)
+          (mapcar #'(lambda (x) (if (stringp x)
+                                    (syntree--gen-leaf x)
+                                  (syntree--replace-terminal-strings x)))))))
 
-;; Building subtrees
+;;; Building subtrees
 
 (defun syntree--adjust-depth (node max-depth)
-  "Depending on the value of 'syntree-one-line', make NODE reach MAX-DEPTH.
-If 'syntree-one-line' is nil, this will append the amount of
-empty strings of length (car NODE) to (cadr NODE) until its
-length is MAX-DEPTH.  If 'syntree-one-line' is t, this will
-prepend the right amount of stem strings of length (car NODE)
-to (cadr NODE) instead."
-  (let* ((spaces (apply #'concat (make-list (car node) " ")))
-         (stem (syntree--fill "|" " " (car node)))
+  "Make NODE reach MAX-DEPTH, according to value of ':one-line'."
+  (let* ((spaces (make-string (car node) ?\s))
+         (stem (cadr node))
          (original-list-of-strings (cdr node))
-         (diff (- max-depth
-                  (length original-list-of-strings))))
+         (diff (- max-depth (length original-list-of-strings))))
     (cons (car node)
-          (if syntree-one-line               ; add stem strings to the top
-              (nconc (make-list diff stem)
-                     (cdr node))
-            (nconc original-list-of-strings ; add empty strings to the bottom
+          (if (syntree--p-get :one-line) ; add stem strings to the top
+              (append (make-list diff stem) original-list-of-strings)
+            (append original-list-of-strings ; add empty strings to the bottom
                    (make-list diff spaces))))))
-
-(defvar syntree--padding-s "  "
-  "The string used as a padding.
-This value is reset at every invocation of an interactive
-function according to the value of 'syntree-padding': specifying
-a different global value for 'syntree--padding-s' has no effect.")
 
 (defun syntree--concatenate-nodes (l)
   "L being a list of nodes, return the result of concatenating them.
+
 The depth of the individual nodes is adjusted and the the
 resulting node is obtained by zipping the lists of strings of
 each node, concatenating them with the desidered amount of
 padding."
-  (let* ((max-depth
-          (apply #'max
-                 (mapcar (lambda (x) (length (cdr x)))
-                         l)))
+  (let* ((max-depth (apply #'max (mapcar #'(lambda (x) (1- (length x))) l)))
          (terminals-list
-          (mapcar (lambda (x) (cdr
-                               (syntree--adjust-depth x
-                                                      max-depth)))
-                  l))
-         (total-width
-          (+ (* (1- (length l))
-                (length syntree--padding-s))
-             (apply #'+
-                    (mapcar #'car
-                            l)))))
+          (mapcar #'(lambda (x) (syntree--adjust-depth x max-depth)) l))
+         (str (mapcar #'cdr terminals-list))
+         (padding-base (if (> 0 (syntree--p-get :hspace))
+                           0
+                         (syntree--p-get :hspace)))  ; can't have
+                                                     ; negative
+                                                     ; padding
+         ;; and at the very least there will be two spaces between nodes
+         (pad-string (thread-first padding-base
+                                   (+ 2)
+                                   (make-string ?\s)))
+         (total-width (thread-last pad-string
+                                   (length)
+                                   (* (1- (length l)))
+                                   (+ (apply #'+ (mapcar #'car l))))))
     (cons total-width
-          (syntree--zip-concat-lists-of-strings terminals-list))))
+          (syntree--zip-concat-lists-of-strings pad-string str))))
 
-(defun syntree--zip-concat-lists-of-strings (l)
-  "Given a list of nodes L, concatenate them.
-Zip (cadr node) for each node in L, concatenate the strings with
-the desired amount of padding between them.  Return a complex
-node."
+(defun syntree--zip-concat-lists-of-strings (pad l)
+  "Given a list of strings L, zip them with separator PAD.
+
+The strings in L are expected to be the same length: this
+function returns a list of strings.  The first string in the
+output list is the result of concatenating the first character of
+each string in L, the second the result of concatenating the
+second, etc.
+
+PAD is a string that function as a separator like in
+`mapconcat'."
   (cond ((= (length l) 1)
          (car l))
         ((= (length l) 2)
-         (cl-mapcar (lambda (x y) (concat x syntree--padding-s y))
+         (cl-mapcar (lambda (x y) (concat x pad y))
                     (car l)
                     (cadr l)))
-        (t
-         (cl-mapcar (lambda (x y) (concat x syntree--padding-s y))
-                     (car l)
-                     (syntree--zip-concat-lists-of-strings (cdr l))))))
+        (t (cl-mapcar (lambda (x y) (concat x pad y))
+                      (car l)
+                      (syntree--zip-concat-lists-of-strings pad (cdr l))))))
 
-(defun syntree--draw-branch (s)
-  "Given string of stems S, return a branch string connecting them."
-  (if (= (length (replace-regexp-in-string "\s" "" s))
-         1)
+(defun syntree--draw-branch (s &optional return-only-center)
+  "Given string of stems S, return a branch string connecting them.
+
+If RETURN-ONLY-CENTER is non-nil, only return a string containing
+whitespace and the value of ':stem' according to
+`syntree--style'."
+  (if (and (= (length (replace-regexp-in-string "\s" "" s)) 1)
+           (not return-only-center))
       ""
-    (let* ((left-offset
-            (replace-regexp-in-string "|.*$" "" s))
-           (right-offset
-            (replace-regexp-in-string "^.*|" "" s))
-           (branch-width
-            (- (length s)
-               (+ (length left-offset)
-                  (length right-offset))))
-           (raw-branch
-            (concat left-offset
-                    (replace-regexp-in-string "^_\\|_$" "."
-                                              (syntree--fill "|" "_"
-                                                             branch-width))
-                    right-offset)))
-      (if syntree-smooth-branches
-          (replace-regexp-in-string "\\." " " raw-branch)
-        raw-branch))))
+    (let* ((stem-re (regexp-quote (syntree--p-get :stem)))
+           (not-stem-re (concat "[^" stem-re "]"))
+           (one-stem-p (thread-last s
+                                    (replace-regexp-in-string not-stem-re "")
+                                    (length)
+                                    (eq 1)))
+           (begin-re (concat "^.*" stem-re))
+           (end-re (concat stem-re ".*$"))
+           (left-offset (replace-regexp-in-string end-re "" s))
+           (right-offset (replace-regexp-in-string begin-re "" s))
+           (branch-width (- (length s)
+                            (+ (1+ (length left-offset))
+                               (1+ (length right-offset)))))
+           (only-center (concat " "
+                                (syntree--fill " " branch-width nil
+                                               (syntree--p-get :stem))
+                                " ")))
+      (cond ((and one-stem-p return-only-center) only-center)
+            (return-only-center
+             (concat left-offset only-center right-offset))
+            (t
+             (let* ((spaces-list (thread-first s
+                                               (string-trim left-offset
+                                                            right-offset)
+                                               (split-string stem-re t)))
+                    (branch (thread-last
+                              spaces-list
+                              (mapcar #'(lambda (x)
+                                          (replace-regexp-in-string
+                                           "[[:space:]]"
+                                           (syntree--p-get :hbranch)
+                                           x)))
+	                      (funcall
+                               #'(lambda (x)
+                                   (string-join
+                                    x (syntree--p-get :intersection))))
+	                      (funcall
+                               #'(lambda (x)
+                                   (concat
+                                    (syntree--p-get :l-intersection t)
+				    x
+				    (syntree--p-get :r-intersection t))))))
+                    (center (if (characterp (syntree--p-get :branchcenter))
+                                (syntree--p-get :branchcenter)
+                              (string-to-char (syntree--p-get :branchcenter))))
+                    (index-center (string-match "[^[:space:]]" only-center
+                                                nil t))
+                    (branch-list (string-to-list branch)))
+               (setf (nth index-center branch-list) center)
+               (concat left-offset
+                       (apply #'string branch-list)
+                       right-offset)))))))
 
 (defun syntree--split-branch (s)
   "Return list of branch, left and right offset.
 S is the string containing the branch."
   (list (replace-regexp-in-string "\s" "" s)
-        (replace-regexp-in-string "[^\s]" ""
-                                  (replace-regexp-in-string "\s*$" "" s))
-        (replace-regexp-in-string "[^\s]" ""
-                                  (replace-regexp-in-string "^\s*" "" s))))
-
-(defun syntree--gen-label-list (label-string branch-string)
-  "Return a list of strings to be concatenated as the label.
-LABEL-STRING is the string in the input that is a label of one
-constituent.  BRANCH-STRING is the string containing the
-horizontal branch."
-  (if (string-blank-p (string-trim label-string))
-      ;; If the label is empty, all we need is to copy the branch
-      ;; string replacing everything that is not a "|" with white
-      ;; space:
-      (replace-regexp-in-string "[^|]" " " branch-string)
-    (let* ((label-list
-            (syntree--split-and-wrap label-string))
-           (branch-segments
-            (syntree--split-branch branch-string))
-           (label-width
-            (apply #'max (mapcar #'length label-list))))
-      (if (> label-width
-             (length (car branch-segments)))
-          ;; If the label is larger than the branch (not the branch
-          ;; string, the branch!), then just center each string in
-          ;; label-list.
-          (mapcar (lambda (x) (syntree--fill x " " (length branch-string)))
-                  label-list)
-        ;; Otherwise, center each string in label-list relative to the
-        ;; branch, and then pad left and right with the left and right
-        ;; offsets.
-        (mapcar (lambda (x) (concat (cadr branch-segments)
-                                    (syntree--fill x
-                                                   " "
-                                                   (length
-                                                    (car branch-segments)))
-                                    (caddr branch-segments)))
-                label-list)))))
-
-(defun syntree--homogenize-length (l)
-  "Make all strings in L as long as the longest one.
-Return a list whose car is the length of all the strings, and
-whose cadr is all the strings in L, padded with whitespace via
-'syntree--fill' so that they are the same length, which is the
-length of the longest string in L."
-  (let ((max-length
-         (apply #'max (mapcar #'length l))))
-    (cons max-length
-          (mapcar (lambda (x) (syntree--fill x " " max-length))
-                  (cl-delete-if #'string-blank-p l)))))
-
-(defun syntree--replace-outer-stems (l)
-  "Replace first and last \"|\" in L with \"/\" and \"\\\".
-If 'syntree-smooth-branches' is nil, or there isn't more than one stem, do
-nothing."
-  (let ((new-top
-         (replace-regexp-in-string "^\\(\s*\\)|" "\\1/"
-                                   (replace-regexp-in-string "|\\(\s*\\)$"
-                                                             "\\\\\\1"
-                                                             (car l)))))
-    (if (or (not syntree-smooth-branches)
-            (= (length (replace-regexp-in-string "\s" "" (car l)))
-               1))
-        (identity l)
-      (cl-replace l (cons new-top (cdr l))))))
+	(thread-last s
+		     (replace-regexp-in-string "\s*$" "")
+		     (replace-regexp-in-string "[^\s]" ""))
+	(thread-last s
+		     (replace-regexp-in-string "^\s*" "")
+		     (replace-regexp-in-string "[^\s]" ""))))
 
 (defun syntree--gen-subtree (lab d)
-  "Return a branching node given a label and a list of nodes.
+  "Return a branching node given a label and a list of vertical nodes.
+
 LAB is the label string, D the list of daughter nodes."
-  (let* ((subtree
-          (cdr (syntree--concatenate-nodes d)))
-         (branch-string
-          (syntree--draw-branch (car subtree)))
-         (label
-          (syntree--gen-label-list lab
-                                   branch-string))
-         (single-stem
-          (if (= (length (replace-regexp-in-string "\s" "" (car subtree)))
-                 1)               ; there is only one stem
-              (car subtree)
-            (replace-regexp-in-string "[^|]" " "
-                                      branch-string))))
+  (let* ((dir (syntree--p-get :growing))
+         (complex-node (syntree--concatenate-nodes d))
+         (raw-subtree (cddr complex-node))
+         (raw-stems (cadr complex-node))
+         (stems-tip-str (with-temp-buffer
+                          (insert raw-stems)
+                          (goto-char (point-min))
+                          (let ((re (concat "^\\(\s*\\)"
+		                            "[^[:space:]]"
+		                            "\\(.*\\)"
+		                            "[^[:space:]]"
+		                            "\\(\s*\\)$")))
+                            (if (re-search-forward re nil t)
+                                (concat (match-string-no-properties 1)
+	                                (syntree--p-get :l-stem t)
+	                                (match-string-no-properties 2)
+	                                (syntree--p-get :r-stem t)
+	                                (match-string-no-properties 3))
+                              ;; search failed, meaning there is only
+                              ;; one stem:
+                              raw-stems))))
+         (branch (syntree--draw-branch raw-stems))
+         (only-center (syntree--draw-branch raw-stems 'only-center))
+         (top-long-stem (if (> (syntree--p-get :height) 1)
+                            (make-list (syntree--p-get :height)
+                                       only-center)
+                          ""))
+         (label (syntree--split-string 'label nil dir lab branch))
+         (max-width (thread-last (list stems-tip-str label branch only-center)
+                                 (flatten-tree)
+                                 (mapcar #'length)
+                                 (apply #'max))))
     (syntree--homogenize-length
-     (mapcan #'flatten-tree
-             (list single-stem
-                    label
-                    (when (> syntree-height 1)
-                      (make-list syntree-height
-                                 (replace-regexp-in-string "[^|]" " "
-                                                           branch-string)))
-                    branch-string
-                    (syntree--replace-outer-stems subtree))))))
+     'node max-width nil
+     (cl-delete-if #'string-blank-p
+                   (flatten-tree (list only-center
+                                       label
+                                       top-long-stem
+                                       branch
+                                       stems-tip-str
+                                       raw-subtree))))))
 
-;; Building the tree
-
-(defun syntree--ready-constituent-p (l)
-  "Check that L is a constituent ready to be merged into a subtree.
-Return t if the first member of L is a label and all others are
-nodes, nil otherwise."
-  (ignore-errors
-    (and (stringp (car l))
-         (cl-every #'numberp
-                   (mapcar #'car
-                           (cdr l))))))
+;;; Building the tree
 
 (defun syntree--merge (l)
-  "Recursively generate all subtrees of list L.
-Return the top node."
-  (if (syntree--ready-constituent-p l)
+  "Recursively generate subtrees of list L.  Return the top node."
+  (if (ignore-errors
+        (and (stringp (car l))
+             (thread-last l
+                          (cdr)
+                          (mapcar #'car)
+                          (cl-every #'numberp))
+             (cl-every #'numberp (mapcar #'car (cdr l)))))
+      ;; l is a ready constituent: its car is a string and its cdr is
+      ;; a list of nodes (lists whose car is an integer).
       (syntree--gen-subtree (car l) (cdr l))
+    ;; l is not a ready constituent: there is one or more subtrees to
+    ;; generate before we can merge
     (syntree--merge
      (cons (car l)
-           (mapcar (lambda (x) (if (numberp (car x))
-                                   (identity x)
-                                 (syntree--merge x)))
+           (mapcar #'(lambda (x) (if (numberp (car x))
+                                     (identity x)
+                                   (syntree--merge x)))
                    (cdr l))))))
 
-(defun syntree--add-newlines (l)
-  "Append \"\\n\" to each string in (cadr L) and concatenate them all.
-Also, remove the stem from the top node, and return the resulting
-string (cadr L), which is the plain text tree."
-   (concat "\n"   ; add empty line for insertion or yanking
-           (apply #'concat
-                  (mapcar
-                   (lambda (x) (concat x "\n"))
-                   (cl-delete (cadr l)
-                              (cdr l))))))
 (defun syntree--sublists (l)
   "Return list of all sublists of L."
   (cons l
@@ -430,311 +745,354 @@ string (cadr L), which is the plain text tree."
                                 (syntree--sublists x)))
                   (identity l)))))
 
-(defun syntree--get-string ()
-  "Return first list after point as buffer substring.
-Check that the string is syntactically well-formed as an input
-for 'syntree--main', and yield an informative 'user-error' if it
-is not."
-  (catch 'error
-    (unless (search-forward "(" nil t)
-      (throw 'error nil))
-    (backward-char)
-    (mark-sexp)
-    (exchange-point-and-mark)
-    (let ((candidate
-           (buffer-substring-no-properties (region-beginning)
-                                           (region-end))))
-      (deactivate-mark)
-      (unless (ignore-errors (read candidate))
-        (throw 'error nil))
-      (unless (cl-every #'stringp
-                        (flatten-tree (read candidate)))
-        (user-error
-         "Not a valid input: each element must be a string"))
-      (unless (cl-every (lambda (x) (> (length x) 1))
-                        (syntree--sublists (read candidate)))
-        (user-error
-         "Not a valid input: each constituent must be labeled"))
-      candidate)))
+(defun syntree--main (s)
+  "Return the plain text tree given input string S."
+  ;; Add newlines and put everything together
+  (let* ((dir (syntree--p-get :growing))
+         (raw-output (thread-last s
+                                  (read)
+                                  (syntree--replace-terminal-strings)
+                                  (syntree--merge)
+                                  (cddr)
+                                  (syntree--horizontalize-text dir)
+                                  (cl-delete-if #'string-blank-p))))
+    (thread-first (syntree--reverse nil raw-output)
+                  (string-join "\n")
+                  (concat "\n"))))
 
-(defun syntree--main (s arg)
-  "Return the plain text tree given input string S.
-ARG is the prefix argument passed by the interactive function
-that calls this function.  If it is nil, the value of
-'syntree--padding-s' is a string of length 'syntree-padding'.
-Otherwise, it is a string of length 'ARG'."
-  ;; If the input is not valid, exit the function with a helpful
-  ;; message.
-  (if arg
-      (setq syntree--padding-s
-            (apply #'concat (make-list arg " ")))
-    (setq syntree--padding-s
-          (apply #'concat (make-list syntree-padding " "))))
-  ;; If the input is valid, convert it into a list and
-  ;; return the tree.
-  (syntree--add-newlines
-   (syntree--merge
-    (syntree--replace-terminal-strings (read s)))))
+;;; Interactive part
 
-;;; Transient
+(defun syntree--copy-style (style-list)
+  "Return deep copy of STYLE-LIST."
+  (let ((copy))
+    (dolist (x style-list)
+      (push x copy))
+    (nreverse copy)))
 
-(defvar syntree--defaults '())
-(defvar syntree--current '())
+(defun syntree--check-input ()
+  "Check that the string is valid for syntree to interpret.
 
-(defun syntree--save-defaults ()
-  "Return an alist specifying the default value of each variable."
-  (let ((defaults '()))
-    (push (cons 'syntree-wrap syntree-wrap) defaults)
-    (push (cons 'syntree-height syntree-height) defaults)
-    (push (cons 'syntree-padding syntree-padding) defaults)
-    (push (cons 'syntree-one-line syntree-one-line) defaults)
-    (push (cons 'syntree-smooth-branches syntree-smooth-branches) defaults)
-    defaults))
+Return an informative error message if it is not."
+  (save-excursion
+    (goto-char (point-min))
+    (let (output)
+      (catch 'error
+        (unless (search-forward "(" nil t)
+          (setq output "")
+          (throw 'error nil))
+        (let ((candidate
+               (buffer-substring-no-properties (progn (search-backward "(")
+                                                      (point))
+                                               (progn (forward-sexp 1 nil)
+                                                      (point)))))
+          (unless (ignore-errors (read candidate))
+            (setq output "")
+            (throw 'error nil))
+          (unless (thread-last candidate
+                               (read)
+                               (flatten-tree)
+                               (cl-every #'stringp))
+            (setq output "Each element must be a string")
+            (throw 'error nil))
+          (unless (thread-last candidate
+                               (read)
+                               (syntree--sublists)
+                               (cl-every #'(lambda (x) (> (length x) 1))))
+            (setq output "Each constituent must be labeled")
+            (throw 'error nil))))
+      output)))
 
-(transient-define-suffix syntree--set-padding (val)
-  "Set the value of 'syntree-padding'.
-If this function is not called as a transient suffix command, the
-new value is set globally as a default for the rest of the
-session."
-  :description "set variable value"
-  :transient t
-  (interactive "nPadding amount: ")
-  (let ((amount
-         (if (> 1 val)
-             1
-           val)))
-    (if syntree--defaults
-        (progn
-          (setf (alist-get 'syntree-padding
-                           syntree--current)
-                amount)
-          (syntree--show-values))
-      (setq syntree-padding amount)
-      (message "syntree-padding set to %s" amount))))
+(defvar syntree-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "M-<left>") 'syntree-reduce-padding)
+    (define-key map (kbd "M-<right>") 'syntree-increase-padding)
+    (define-key map (kbd "M-<up>") 'syntree-reduce-height)
+    (define-key map (kbd "M-<down>") 'syntree-increase-height)
+    (define-key map (kbd "C-c C-s") 'syntree-change-style)
+    (define-key map (kbd "C-c C-v") 'syntree-change-value)
+    (define-key map (kbd "C-c C-c") 'syntree-done)
+    map)
+  "Keymap for `syntree-mode'.")
 
-(transient-define-suffix syntree--set-height (val)
-  "Set the value of 'syntree-height'.
-If this function is not called as a transient suffix command, the
-new value is set globally as a default for the rest of the
-session."
-  :description "set variable value"
-  :transient t
-  (interactive "nMinimum height of branches: ")
-  (let ((amount
-         (if (> 1 val)
-             1
-           val)))
-    (if syntree--defaults
-        (progn
-          (setf (alist-get 'syntree-height
-                           syntree--current)
-                amount)
-          (syntree--show-values))
-      (setq syntree-height amount)
-      (message "syntree-height set to %s" amount))))
+(defvar-local syntree--original-marker nil)
+(defvar-local syntree--input-hash nil)
+(defvar-local syntree--output-window nil)
+(defvar-local syntree--output-buffer nil)
+(defvar-local syntree--input-buffer nil)
+(defvar-local syntree--source nil)
+(defvar-local syntree--buffer-type nil)
 
-(transient-define-suffix syntree--set-wrap (val)
-  "Set the value of 'syntree-wrap'.
-If this function is not called as a transient suffix command, the
-new value is set globally as a default for the rest of the
-session."
-  :description "set variable value"
-  :transient t
-  (interactive "nMaximum lenght of strings (0 means no wrapping): ")
-  (let ((amount
-         (if (> 1 val)
-             0
-           val)))
-    (if syntree--defaults
-        (progn
-          (setf (alist-get 'syntree-wrap
-                           syntree--current)
-                amount)
-          (syntree--show-values))
-      (setq syntree-wrap amount)
-      (message "syntree-wrap set to %s" amount))))
+(defvar syntree--idle-timer nil)
 
-(transient-define-suffix syntree--toggle-smooth ()
-  "Toggle the value of 'syntree-smooth-branches'.
-If this function is not called as a transient suffix command, the
-new value is set globally as a default for the rest of the
-session."
-  :description "set variable value"
-  :transient t
+(defun syntree-done ()
+  "Add source and output to kill ring, kill syntree buffers."
   (interactive)
-  (if syntree--defaults
-      (let ((new-value
-             (not (alist-get 'syntree-smooth-branches syntree--current))))
-        (setf (alist-get 'syntree-smooth-branches
-                         syntree--current)
-              new-value)
-        (syntree--show-values))
-    (let ((new-value
-           (not syntree-smooth-branches)))
-      (setq syntree-smooth-branches new-value)
-      (message "syntree-smooth-branches set to %s" new-value))))
-
-(transient-define-suffix syntree--toggle-one-line ()
-  "Toggle the value of 'syntree-one-line'.
-If this function is not called as a transient suffix command, the
-new value is set globally as a default for the rest of the
-session."
-  :description "set variable value"
-  :transient t
-  (interactive)
-  (if syntree--defaults
-      (let ((new-value
-             (not (alist-get 'syntree-one-line syntree--current))))
-        (setf (alist-get 'syntree-one-line
-                         syntree--current)
-              new-value)
-        (syntree--show-values))
-    (let ((new-value
-           (not syntree-one-line)))
-      (setq syntree-one-line new-value)
-      (message "syntree-one-line set to %s" new-value))))
-
-(defun syntree--show-values ()
-  "Echo the current values of the relevant variables."
-  (message
-   "syntree-smooth-branches = %s
-syntree-one-line        = %s
-syntree-padding         = %s
-syntree-height          = %s
-syntree-wrap            = %s"
-   (alist-get 'syntree-smooth-branches syntree--current)
-   (alist-get 'syntree-one-line syntree--current)
-   (alist-get 'syntree-padding syntree--current)
-   (alist-get 'syntree-height syntree--current)
-   (alist-get 'syntree-wrap syntree--current)))
-
-;; The next four functions quit the transient, set the values of the
-;; syntree variables according to the alist 'syntree--current' and
-;; evaluate either 'syntree-insert' or 'syntree-kill'.  If the chosen
-;; values are to be kept as the defaults for the rest of the Emacs
-;; session, nothing is to be done except setting the alists
-;; 'syntree--current' and 'syntree--defaults' to nil.  Otherwise, the
-;; values in 'syntree--defaults' are restored before doing so.
-
-(transient-define-suffix syntree--exit-insert-save ()
-  :description "exit transient"
-  (interactive)
-  (transient-quit-all)
-  (dolist (v syntree--current)
-    (set (car v)
-         (alist-get (car v) syntree--current)))
-  (funcall #'syntree-insert)
-  (setq syntree--current '()
-        syntree--defaults '()))
-
-(transient-define-suffix syntree--exit-kill-save ()
-  :description "exit transient"
-  (interactive)
-  (transient-quit-all)
-  (dolist (v syntree--current)
-    (set (car v)
-         (alist-get (car v) syntree--current)))
-  (funcall #'syntree-kill)
-  (setq syntree--current '()
-        syntree--defaults '()))
-
-(transient-define-suffix syntree--exit-insert ()
-  :description "exit transient"
-  (interactive)
-  (dolist (v syntree--current)
-    (set (car v)
-         (alist-get (car v) syntree--current)))
-  (funcall #'syntree-insert)
-  (dolist (v syntree--defaults)
-    (set (car v)
-         (alist-get (car v) syntree--defaults)))
-  (setq syntree--current '()
-        syntree--defaults '()))
-
-(transient-define-suffix syntree--exit-kill ()
-  :description "exit transient"
-  (interactive)
-  (dolist (v syntree--current)
-    (set (car v)
-         (alist-get (car v) syntree--current)))
-  (funcall #'syntree-kill)
-  (dolist (v syntree--defaults)
-    (set (car v)
-         (alist-get (car v) syntree--defaults)))
-  (setq syntree--current '()
-        syntree--defaults '()))
-
-(transient-define-prefix syntree--set-variables ()
-  [:class transient-columns
-   ["Set variables"
-    ("s" "Toggle value of smooth-branches" syntree--toggle-smooth)
-    ("l" "Toggle value of one-line" syntree--toggle-one-line)
-    ("p" "Set amount of padding" syntree--set-padding)
-    ("h" "Set minumum height of branches" syntree--set-height)
-    ("w" "Set value for word-wrapping" syntree--set-wrap)]
-   ["Actions"
-    ("i" " Insert tree" syntree--exit-insert)
-    ("k" " Kill tree" syntree--exit-kill)
-    ("!i" "Insert tree and save current values" syntree--exit-insert-save)
-    ("!k" "Kill tree and save current values" syntree--exit-kill-save)]])
-
-;;; The interactive functions
+  (save-excursion
+    (unless (eq syntree--buffer-type 'input)
+      (select-window (get-buffer-window syntree--input-buffer) t))
+    (let ((input-buf (current-buffer))
+          (target syntree--original-marker)
+          (output-buf syntree--output-buffer))
+      (if (syntree--check-input)
+          (when (yes-or-no-p "No valid input found.  Exit syntree-mode? ")
+            (kill-buffer output-buf)
+            (delete-frame)
+            (kill-buffer input-buf)
+            (goto-char target))
+        (syntree--refresh)
+        (kill-new (progn (goto-char (point-min))
+                         (search-forward "(" nil t)
+                         (buffer-substring-no-properties
+                          (progn (search-backward "(")
+                                 (point))
+                          (progn (forward-sexp 1 nil)
+                                 (point)))))
+        (with-current-buffer output-buf
+          (kill-new (buffer-substring-no-properties (point-min)
+                                                    (point-max))))
+        (kill-buffer output-buf)
+        (delete-frame)
+        (kill-buffer input-buf)
+        (goto-char target)))))
 
 ;;;###autoload
-(defun syntree-insert (&optional arg)
-  "Insert the tree at the first empty line after point.
-If there is no such line, insert it at the end of the buffer.
-The optional prefix argument ARG specifies a temporary value for
-the amount of padding."
-  (interactive "P")
-  (save-excursion
-    (let ((input (syntree--get-string)))
-      (unless input
-        (user-error "No valid input found"))
-      (unless (search-forward-regexp "^\s*$" nil t)
-        (goto-char (point-max))
-        (newline t nil))
-      (insert (syntree--main input arg))
-      (message nil))))
+(defun syntree ()
+  "Create new frame with input and output buffers for syntree.
 
-;;;###autoload
-(defun syntree-kill (&optional arg)
-  "Add the tree as latest kill to the 'kill-ring'.
-The optional prefix argument ARG specifies a temporary value for
-the amount of padding."
-  (interactive "P")
-  (save-excursion
-    (let ((input (syntree--get-string)))
-      (unless input
-        (user-error "No valid input found"))
-      (kill-new (syntree--main input arg))
-      (message nil))))
+This function also sets the value of `syntree--style' to the one
+of `syntree-default-style' (`syntree--style-basic', if the latter
+is not already specified).
 
-;; Before invoking the transient with 'syntree--set-variables', this
-;; function stores the current (i.e., the default) values of the
-;; syntree variables in an association list, 'syntree--defaults', and
-;; makes a copy of it, 'syntree--current'.  It is the latter that will
-;; be manipulated by the suffix commands made available by
-;; 'syntree--set-variables'.  The defaults are kept separate so that
-;; they can be restored after the tree was generated, if the user
-;; wants.  Both association list will be reset to nil automatically
-;; after the tree is generated.
-
-;;;###autoload
-(defun syntree-custom ()
-  "Open a transient buffer to set the syntree variables.
-The default values are saved in an alist, and either restored or
-not depending on the action taken once in the transient.
-Evaluates 'syntree-insert' or 'syntree-kill' to generate the
-output tree."
+Unless it's already active, this function also activates the idle
+timer that redraws the tree."
   (interactive)
-  (setq syntree--defaults (syntree--save-defaults))
-  (setq syntree--current (copy-alist syntree--defaults))
+  (when (eq major-mode 'syntree-mode)
+    (user-error "Already in syntree mode"))
+  (let ((old-position (point-marker))
+        (input-buff (generate-new-buffer "syntree-input" nil))
+        (message-log-max nil))
+    (display-buffer-other-frame input-buff)
+    (with-selected-window (get-buffer-window input-buff t)
+      (syntree-mode)
+      (setq syntree--buffer-type 'input)
+      ;; Create syntree--styles-alist from the list of styles
+      (setq syntree--styles-alist
+	    (mapcar #'(lambda (x) (cons (map-elt x :name) x))
+		    syntree-styles-list))
+      (unless syntree-default-style
+        (setq syntree-default-style 'basic))
+      (setq syntree--style
+            (syntree--copy-style (map-elt syntree--styles-alist
+                                          syntree-default-style)))
+      (setq syntree--input-hash (buffer-hash))
+      (set-window-dedicated-p (selected-window) t)
+      (let ((output-buffer (generate-new-buffer "syntree-output" nil)))
+        (display-buffer-in-side-window output-buffer '((side . bottom)
+                                                       (slot . 1)
+                                                       (dedicated . p)))
+        (window-resize (selected-window)
+                       (- 5 (window-height (selected-window))))
+        (setq syntree--output-window (next-window)
+              syntree--output-buffer (window-buffer syntree--output-window)
+              syntree--original-marker old-position)
+        (select-window (get-buffer-window output-buffer))
+        ;; we want 'truncate-lines' to be t in the output buffer, so
+        ;; that large trees are displayed faithfully
+        (syntree-mode)
+        (font-lock-mode -1)
+        (setq syntree--buffer-type 'output
+              truncate-lines t
+              syntree--input-buffer input-buff
+              syntree--original-marker old-position)
+        (read-only-mode 1)
+        (select-window (get-buffer-window input-buff)))))
+  (unless syntree--idle-timer
+    (setq syntree--idle-timer
+          (run-with-idle-timer 0.1 t #'syntree--on-timer))))
+
+(defun syntree--refresh ()
+  "Redraw the tree in `syntree--output-window'."
+  (setq syntree--input-hash (buffer-hash))
+  (setq syntree--current-style syntree--style)
   (save-excursion
-    (let ((input (syntree--get-string)))
-      (unless input
-        (user-error "No valid input found"))
-      (syntree--set-variables))))
+    (let ((input-w (selected-window))
+          (message-log-max nil))
+      (goto-char (point-min))
+      (if (syntree--check-input)
+          (let ((err-mess (syntree--check-input)))
+            (message err-mess))
+        (let* ((source (progn (goto-char (point-min))
+                              (search-forward "(" nil t)
+                              (buffer-substring-no-properties
+                               (progn (search-backward "(")
+                                      (point))
+                               (progn (forward-sexp 1 nil)
+                                      (point)))))
+               (output (syntree--main source)))
+          (select-window syntree--output-window t)
+          (read-only-mode -1)
+          (setq syntree--source source)
+          (delete-region (point-min) (point-max))
+          (insert output)
+          (read-only-mode 1)))
+      (select-window input-w t))))
+
+(defun syntree--on-timer ()
+  "Call `syntree--refresh' if in the right circumstances.
+
+Ignore errors.  Only call the function is the current buffer is a
+syntree input buffer, the window specified there as
+`syntree--output-window' is currently live, and the input buffer
+hasn't changed since last time `syntree--refresh' was called in
+this buffer."
+  (when (and (eq major-mode 'syntree-mode)
+             (eq syntree--buffer-type 'input)
+             (window-live-p syntree--output-window)
+             (not (equal (buffer-hash) syntree--input-hash)))
+    (ignore-errors (syntree--refresh))))
+
+(defun syntree--cancel-timer ()
+  "Cancel `syntree--idle-timer' from the list of idle timers.
+
+Only do this if there is currently no buffer in `syntree-mode'
+except for the current one.
+
+This function is added buffer-locally on `kill-buffer-hook' when
+`syntree-mode' is initialized."
+  (let ((other-buffers (delete (current-buffer) (buffer-list))))
+    (unless (cl-some #'(lambda (b)
+                         (let ((m (with-current-buffer b major-mode)))
+                           (eq m 'syntree-mode)))
+                     other-buffers)
+      (cancel-timer syntree--idle-timer)
+      (setq syntree--idle-timer nil))))
+
+(defun syntree-increase-padding ()
+  "Increase horizontal spacing.
+
+Call `syntree--refresh' to redraw the tree."
+  (interactive)
+  (save-excursion
+    (unless (eq syntree--buffer-type 'input)
+      (select-window (get-buffer-window syntree--input-buffer) t))
+    (let ((curr (syntree--p-get :hspace))
+          (message-log-max nil))
+      (map-put! syntree--style :hspace (1+ curr))
+      (message (format ":hspace set to %s" (1+ curr))))
+    (syntree--refresh)))
+
+(defun syntree-reduce-padding ()
+  "Reduce horizontal spacing.
+
+Call `syntree--refresh' to redraw the tree."
+  (interactive)
+  (save-excursion
+    (unless (eq syntree--buffer-type 'input)
+      (select-window (get-buffer-window syntree--input-buffer) t))
+    (let ((message-log-max nil)
+          (curr (syntree--p-get :hspace)))
+      (if (< curr 1)
+          (message "Cannot reduce more")
+        (map-put! syntree--style :hspace (1- curr))
+        (message (format ":hspace set to %s" (1- curr)))
+        (syntree--refresh)))))
+
+(defun syntree-increase-height ()
+  "Increase vertical lenght of stems.
+
+Call `syntree--refresh' to redraw the tree."
+  (interactive)
+  (save-excursion
+    (unless (eq syntree--buffer-type 'input)
+      (select-window (get-buffer-window syntree--input-buffer) t))
+    (let* ((curr (syntree--p-get :height))
+           (new (if (> 1 curr) 2 (1+ curr)))
+           (message-log-max nil))
+      (map-put! syntree--style :height new)
+      (message (format ":height set to %s" new)))
+    (syntree--refresh)))
+
+(defun syntree-reduce-height ()
+  "Reduce vertical lenght of stems.
+
+Call `syntree--refresh' to redraw the tree."
+  (interactive)
+  (save-excursion
+    (unless (eq syntree--buffer-type 'input)
+      (select-window (get-buffer-window syntree--input-buffer) t))
+    (let ((message-log-max nil)
+          (curr (syntree--p-get :height)))
+      (if (< curr 2)
+          (message "Cannot reduce more")
+        (map-put! syntree--style :height (1- curr))
+        (message (format ":height set to %s" (1- curr)))
+        (syntree--refresh)))))
+
+(defun syntree-change-value ()
+  "Change a value in `syntree--style', with completion.
+
+Call `syntree--refresh' to redraw the tree."
+  (interactive)
+  (save-excursion
+    (unless (eq syntree--buffer-type 'input)
+      (select-window (get-buffer-window syntree--input-buffer) t))
+    (let* ((p (completing-read "Property to change: "
+                               syntree-properties))
+           (property (intern p))
+           (curr (syntree--p-get property))
+           (pr (format "(Current is %s): " curr))
+           (value (cond ((eq property :one-line)
+                         (not curr))
+                        ((or (eq property :hspace)
+                             (eq property :height)
+                             (eq property :roofwidth)
+                             (eq property :roofminwidth)
+                             (eq property :word-wrap))
+                         (read-number pr))
+                        ((eq property :growing)
+                         (intern (completing-read ": "
+                                                  '("up" "down"
+                                                    "left" "right"))))
+                        (t (read-string pr)))))
+      (map-put! syntree--style property value)
+      (syntree--refresh))))
+
+(defun syntree-change-style ()
+  "Change value of `suntree--current-style' with completion.
+
+Call `syntree--refresh' to redraw the tree."
+  (interactive)
+  (unless (eq syntree--buffer-type 'input)
+    (select-window (get-buffer-window syntree--input-buffer) t))
+  (setq syntree--styles-alist
+	(mapcar #'(lambda (x) (cons (map-elt x :name) x))
+		syntree-styles-list))
+  (let ((style (intern (completing-read
+                        (format "Change %s to: "
+                                (map-elt syntree--style :name))
+                        (map-keys syntree--styles-alist)))))
+    (setq syntree--style
+          (syntree--copy-style (map-elt syntree--styles-alist style)))
+    (syntree--refresh)))
+
+(define-derived-mode syntree-mode
+  ;; We derive it from 'emacs-lisp-mode' so that we can leverage on
+  ;; the lisp stuff to have a nice editing of the input string, which
+  ;; is really a nested list of strings.  Font lock will be turned off
+  ;; in the output buffer, which should be enough to make this choice
+  ;; no be in the way there.
+  emacs-lisp-mode "Syntree"
+  "Major mode for Syntree."
+  :interactive nil
+  :after-hook
+  ;; We don't want unnecessary idle timers to stick along.
+  (progn
+    (add-hook 'kill-buffer-hook #'syntree--cancel-timer nil t)
+    (setq syntree--styles-alist
+	(mapcar #'(lambda (x) (cons (map-elt x :name) x))
+		syntree-styles-list))
+    (setq syntree--style
+          (map-elt syntree--styles-alist syntree-default-style))))
 
 (provide 'syntree)
 

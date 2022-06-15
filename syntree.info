@@ -1,0 +1,724 @@
+This is readme-for-info.info, produced by makeinfo version 6.8 from
+readme-for-info.texi.
+
+
+File: readme-for-info.info,  Node: Top,  Next: Introduction,  Up: (dir)
+
+Syntree - draw plain text constituency trees
+********************************************
+
+Copyright (C) 2022 Enrico Flor.
+
+   Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with the Front-Cover Texts being “A GNU Manual,” and
+with the Back-Cover Texts as in (a) below.  A copy of the license is
+included in the section entitled “GNU Free Documentation License.”
+
+   (a) The FSF’s Back-Cover Text is: “You have the freedom to copy and
+modify this GNU manual.”
+
+   • Git repository: <https://github.com/enricoflor/syntree>
+   • Melpa page: <https://melpa.org/#/syntree>
+
+* Menu:
+
+* Introduction::
+* Usage::
+* Controlling the design of the tree::
+
+— The Detailed Node Listing —
+
+Usage
+
+* Create a new tree::
+* Syntax of the input::
+* The interactive commands::
+
+The interactive commands
+
+* syntree-change-value (C-c C-v)::
+* syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)::
+* syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)::
+* syntree-change-style (C-c C-v)::
+* syntree-done (C-c C-c)::
+
+Controlling the design of the tree
+
+* Properties::
+* Built-in styles::
+* Define new styles::
+* Change default style::
+
+Properties
+
+* growing::
+* oneline::
+* hspace::
+* height::
+* roofwidth::
+* roofminwidth::
+* word-wrap::
+* String or character properties::
+
+
+
+File: readme-for-info.info,  Node: Introduction,  Next: Usage,  Prev: Top,  Up: Top
+
+1 Introduction
+**************
+
+‘syntree’ is a package for GNU Emacs that draws plain text constituency
+trees.  It is meant to be for plain text what packages like qtree
+(https://www.ctan.org/pkg/qtree) or forest
+(https://www.ctan.org/pkg/forest) are for LaTeX, providing only those
+features that make sense for the plain text format.
+
+   While it is written with the linguist’s usage in mind, ‘syntree’ can
+obviously be used for any sort of tree-like diagram.  Here’s an example
+of what you can get from ‘syntree’:
+
+     ("Sentence"
+         "_NP:the man"
+         ("VP" "Verb:hit"
+         ("NP" "T:the" "N:ball")))
+
+           Sentence
+        ._____|_____.
+        |           |
+        NP          VP
+     .__|__.    .___|___.
+     |_____|    |       |
+     the man  Verb      NP
+               hit   .__|__.
+                     |     |
+                     T     N
+                    the  ball
+
+   The drawing is done interactively, with the output displayed as you
+type:
+
+   It does not provide functionalities such as drawing arrows between
+nodes.  Once the tree is drawn, however, arrows are rather easily added
+manually with picture-mode
+(https://www.gnu.org/software/emacs/manual/html_node/emacs/Picture-Mode.html)
+(built-in in GNU Emacs).
+
+
+File: readme-for-info.info,  Node: Usage,  Next: Controlling the design of the tree,  Prev: Introduction,  Up: Top
+
+2 Usage
+*******
+
+* Menu:
+
+* Create a new tree::
+* Syntax of the input::
+* The interactive commands::
+
+
+File: readme-for-info.info,  Node: Create a new tree,  Next: Syntax of the input,  Up: Usage
+
+2.1 Create a new tree
+=====================
+
+Upon calling the command ‘syntree’ a new frame is created that is split
+in two windows: the upper one visits the *input buffer*, the lower one
+visits the *output buffer*.  Both buffers are in ‘syntree-mode’.
+
+   At this point, ‘syntree-mode-map’ is activated in the two buffers
+(more on this *note here: The interactive commands.).  The output buffer
+will redisplay the tree every time the input buffer has changed and a
+valid syntree input is detected in it (or whenever the value of
+‘syntree--current-style’ is changed by calling some interactive
+command—more on that below).
+
+
+File: readme-for-info.info,  Node: Syntax of the input,  Next: The interactive commands,  Prev: Create a new tree,  Up: Usage
+
+2.2 Syntax of the input
+=======================
+
+The input is a substring of the buffer made up by parentheses and
+objects formatted as strings.  This input is ‘read’ as a list.  Thus,
+these are valid inputs:
+
+   #+begin_src emacs-lisp (“abc” (“def” “ghi”))
+
+   (“abc” “def” “ghi”) #+end_src emacs-lisp
+
+   Every list must contain more than one string.  These are not valid
+inputs:
+
+   #+begin_src emacs-lisp “abc” “def” ; this is not a list
+
+   (“abc” (“def” ghi)) ; not everything here is a string
+
+   (“abc” (“def”)) ; the embedded list contains only one string
+#+end_src emacs-lisp
+
+   The first string in a list is the label of the branching node.  Here,
+the embedded constituent has an empty label:
+
+     ("XP" "abc" ("" "def" "ghi" "X:xyz"))
+
+           XP
+       ____|____
+      /         \
+      |         |
+     abc    ____|____
+           /    |    \
+           |    |    X
+          def  ghi  xyz
+
+   Terminal nodes can themselves be labeled: the label and the text are
+separated by a ‘:’ (i.e., a colon).  Here some examples of terminals:
+
+      ("" "XP:abcd")  |   |
+                      |  XP
+                      | abcd
+                      |
+     -----------------+-------
+                      |
+      ("" "abcd")     |   |
+                      | abcd
+                      |
+     -----------------+-------
+                      |
+      ("YP" ":abcd")  |  YP
+                      |   |
+                      | abcd
+                      |
+     -----------------+-------
+                      |
+      ("YP" ":ab:cd") |  YP
+                      |   |
+                      | ab:cd
+
+   If the label on the terminal node starts with, or is ‘_’, the leaf
+will be under some sort of roof.  For linguists, this usually indicates
+that the internal syntax of that node is ignored.
+
+     ("DP" "D:a" "_NP:beautiful tree")
+     ("DP" "D:a" "_:beautiful tree")
+
+          DP                      DP
+     .____|____.             .____|____.
+     |         |             |         |
+     D        NP             D  .______|_____.
+     a  .______|_____.       a  |____________|
+        |____________|          beautiful tree
+        beautiful tree
+
+   Whether you are under a roof or not, if you want to force the text of
+a terminal node or of a label to be on multiple lines, use ‘\n’ in the
+input.
+
+     ("Modified \n sentence"
+         "NP:the man"
+         "_VP:vigorously\nhit the ball")
+
+
+           Modified
+           sentence
+        ._____|_____.
+        |           |
+        NP         VP
+     the man  ._____|____.
+              |__________|
+               vigorously
+              hit the ball
+
+   Whether the input string in the buffer is split in different lines or
+not, and whether it is indented in any way or not is irrelevant.
+
+
+File: readme-for-info.info,  Node: The interactive commands,  Prev: Syntax of the input,  Up: Usage
+
+2.3 The interactive commands
+============================
+
+These are all the commands that are available in ‘syntree-mode’ buffers,
+each with the default keybinding.  You can define your own keybindings
+in ‘syntree-mode-map’.
+
+* Menu:
+
+* syntree-change-value (C-c C-v)::
+* syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)::
+* syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)::
+* syntree-change-style (C-c C-v)::
+* syntree-done (C-c C-c)::
+
+
+File: readme-for-info.info,  Node: syntree-change-value (C-c C-v),  Next: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Up: The interactive commands
+
+2.3.1 syntree-change-value (C-c C-v)
+------------------------------------
+
+Change the value of any *note properties: Properties, with completion,
+and redisplay the tree according to the new value.
+
+   Note that changing values this way does not change the value of the
+property in the current style, neither permanently nor for the duration
+of the Emacs session.  The value is simply temporarily overwritten.  If,
+after changing a value you reset the style, the change will be
+discarded.
+
+
+File: readme-for-info.info,  Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Next: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Prev: syntree-change-value (C-c C-v),  Up: The interactive commands
+
+2.3.2 syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)
+--------------------------------------------------------------------------------
+
+Increase and reduce (if possible) the value of ‘:hspace’ (see *note
+properties: Properties.).
+
+   Note that changing values this way does not change the value of the
+property in the current style, neither permanently nor for the duration
+of the Emacs session.  The value is simply temporarily overwritten.  If,
+after changing a value you reset the style, the change will be
+discarded.
+
+
+File: readme-for-info.info,  Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Next: syntree-change-style (C-c C-v),  Prev: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Up: The interactive commands
+
+2.3.3 syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)
+---------------------------------------------------------------------------
+
+Increase and reduce (if possible) the value of ‘:height’ (see *note
+properties: Properties.).
+
+   Note that changing values this way does not change the value of the
+property in the current style, neither permanently nor for the duration
+of the Emacs session.  The value is simply temporarily overwritten.  If,
+after changing a value you reset the style, the change will be
+discarded.
+
+
+File: readme-for-info.info,  Node: syntree-change-style (C-c C-v),  Next: syntree-done (C-c C-c),  Prev: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Up: The interactive commands
+
+2.3.4 syntree-change-style (C-c C-v)
+------------------------------------
+
+Select a different style defined in ‘syntree-styles-list’, with
+completion, as the current one, and redisplay the tree.
+
+   What the current style is right after ‘syntree’ is called is
+determined by the value of ‘syntree-default-style’ (more on this *note
+here: Change default style.).
+
+
+File: readme-for-info.info,  Node: syntree-done (C-c C-c),  Prev: syntree-change-style (C-c C-v),  Up: The interactive commands
+
+2.3.5 syntree-done (C-c C-c)
+----------------------------
+
+Once you are satisfied with how the tree looks like, you can call
+‘syntree-done’: the input and the output (the source for the tree and
+the tree itself) are added to the kill ring (in that order), the two
+syntree buffers and their dedicated frame are killed, and point is back
+in the position it was when ‘syntree’ was called.  You can now yank the
+tree.
+
+
+File: readme-for-info.info,  Node: Controlling the design of the tree,  Prev: Usage,  Up: Top
+
+3 Controlling the design of the tree
+************************************
+
+‘syntree’ produces a tree according to a specific style.  A style is a
+plist that associates properties to values.  Interactively, one can
+switch between *note predefined styles: Define new styles.
+
+* Menu:
+
+* Properties::
+* Built-in styles::
+* Define new styles::
+* Change default style::
+
+
+File: readme-for-info.info,  Node: Properties,  Next: Built-in styles,  Up: Controlling the design of the tree
+
+3.1 Properties
+==============
+
+The properties defining how a tree looks like can be divided in two: the
+first group has booleans, integers or symbols as value, the second has
+strings or characters.  We first examine the first group.
+
+* Menu:
+
+* growing::
+* oneline::
+* hspace::
+* height::
+* roofwidth::
+* roofminwidth::
+* word-wrap::
+* String or character properties::
+
+
+File: readme-for-info.info,  Node: growing,  Next: oneline,  Up: Properties
+
+3.1.1 :growing
+--------------
+
+This property accepts one of these four *symbols* as value:
+
+   • ‘down’
+   • ‘up’
+   • ‘right’
+   • ‘left’
+
+   It determines the direction of growth of the tree: for example, if
+the value is ‘right’, the root of the tree will be to the left and the
+tree will horizontally grow to the right.
+
+
+File: readme-for-info.info,  Node: oneline,  Next: hspace,  Prev: growing,  Up: Properties
+
+3.1.2 :oneline
+--------------
+
+This property has a boolean value.
+
+   If it is ‘t’, it means that all terminal nodes will be aligned
+(horizontally or vertically depending on the value of *note growing::).
+
+
+File: readme-for-info.info,  Node: hspace,  Next: height,  Prev: oneline,  Up: Properties
+
+3.1.3 :hspace
+-------------
+
+This property accepts an integer as value.
+
+   It determines the amount of space between two sister nodes.  It can
+be increased or reduced interactively with ‘syntree-increase-padding’
+and ‘syntree-reduce-padding’.
+
+   Values smaller than 1 are interpreted as the smallest graphically
+viable value.
+
+   Note that if the tree grows horizontally, ‘:hspace’ ends up
+determining vertical space between nodes.
+
+
+File: readme-for-info.info,  Node: height,  Next: roofwidth,  Prev: hspace,  Up: Properties
+
+3.1.4 :height
+-------------
+
+This property accepts an integer as value.
+
+   It determines the length of the stem connecting mother and daughter
+nodes.  It can be increased or reduced interactively with
+‘syntree-increase-height’ and ‘syntree-reduce-height’.
+
+   Values smaller than 1 are interpreted as the smallest graphically
+viable value.
+
+   Note that if the tree grows horizontally, ‘:height’ ends up
+determining a horizontal dimension despite its name.
+
+
+File: readme-for-info.info,  Node: roofwidth,  Next: roofminwidth,  Prev: height,  Up: Properties
+
+3.1.5 :roofwidth
+----------------
+
+This property accepts an integer as value.
+
+   A positive value means that the roof will be larger than the text
+under it, a negative one, shorter.
+
+     :roofwidth 0
+
+         |
+     .___|___.
+     |_______|
+     long leaf
+
+     :roofwidth 2
+
+           |
+     ._____|_____.
+     |___________|
+       long leaf
+
+     :roofwidth -1
+
+         |
+      .__|__.
+      |_____|
+     long leaf
+
+
+File: readme-for-info.info,  Node: roofminwidth,  Next: word-wrap,  Prev: roofwidth,  Up: Properties
+
+3.1.6 :roofminwidth
+-------------------
+
+This property accepts an integer as value.
+
+   It determines what the minimal width of a roof is.  If its value is,
+say, ‘5’, no roof will be drawn (despite what the input is) if the width
+of the text under it and the value of *note roofwidth:: determine that
+it would have to be less than ‘5’ characters wide.
+
+   Values smaller than 1 are interpreted as the smallest graphically
+viable value.
+
+
+File: readme-for-info.info,  Node: word-wrap,  Next: String or character properties,  Prev: roofminwidth,  Up: Properties
+
+3.1.7 :word-wrap
+----------------
+
+This property accepts an integer as value.
+
+   A value smaller than 1 means that strings in the input are never
+broken in different lines except at new line characters.  Any other
+value causes the string to be word wrapped at that given length: for
+instance, a value of 4 will cause the string “young boy” to be split in
+two.
+
+     :word-wrap 0
+
+         |
+     young boy
+
+     :word-wrap 4
+
+       |
+     young
+      boy
+
+   Note that depending on the value of *note growing::, the wrapped text
+will have different apperance.  If the trees grows vertically, the text
+is centered.  If it grows horizontally, it is flushed left or right:
+
+     :word-wrap 4
+     :growing right
+
+     ---young
+        boy
+
+     :word-wrap 4
+     :growing left
+
+     young
+       boy--
+
+
+File: readme-for-info.info,  Node: String or character properties,  Prev: word-wrap,  Up: Properties
+
+3.1.8 String or character properties
+------------------------------------
+
+These are all properties that determine which character is used to draw
+each part of the tree.  The values can be strings (containing one
+character) or single characters.
+
+   Below is an example tree (vertical, growing down) that illustrates
+which component of the tree is associated with which property.
+
+     :hbranch "1"
+     :branchcenter "2"
+     :intersection "3"
+     :l-intersection "4"
+     :r-intersection "5"
+     :stem "6"
+     :l-stem "7"
+     :r-stem "8"
+     :roofstem "9"
+     :rooftop "A"
+     :rooftopangle "B"
+     :roofbottom "C"
+     :roofbottomangle "D"
+
+     ("Sentence"
+      "_NP:the young women"
+      "Aux:may"
+      ("VP" "Verb:hit"
+       ("NP" "T:the" "N:ball")))
+
+                         Sentence
+                             6
+                             6
+              411111111111111211111111111115
+              7              6             8
+              6              6            VP
+              NP            Aux            6
+     BAAAAAAAA9AAAAAAAAB    may            6
+     DCCCCCCCCCCCCCCCCCD             411111211115
+       the young women               7          8
+                                     6          NP
+                                   Verb         6
+                                    hit         6
+                                            411121115
+                                            7       8
+                                            6       6
+                                            T       N
+                                           the    ball
+
+
+File: readme-for-info.info,  Node: Built-in styles,  Next: Define new styles,  Prev: Properties,  Up: Controlling the design of the tree
+
+3.2 Built-in styles
+===================
+
+‘syntree’ comes with four built-styles to provide you with a basis to
+define your own (see *note here: Define new styles.).  That is, the
+predefined value of ‘syntree-styles-list’ is:
+
+     '((:name basic
+              :der nil
+              :growing down
+              :hspace 0
+              :one-line nil
+              :height 0
+              :hbranch "_"
+              :branchcenter "|"
+              :intersection "."
+              :l-intersection "."
+              :r-intersection "."
+              :stem "|"
+              :l-stem "|"
+              :r-stem "|"
+              :roofstem "|"
+              :rooftop "_"
+              :rooftopangle "."
+              :roofbottom "_"
+              :roofbottomangle "|"
+              :roofwidth 0
+              :roofminwidth 3
+              :word-wrap 0)
+       (:name horizontal
+               :der nil
+               :growing right
+               :hspace 0
+               :one-line nil
+               :height 2
+               :hbranch "|"
+               :branchcenter "+"
+               :intersection "+"
+               :l-intersection "+"
+               :r-intersection "+"
+               :stem "-"
+               :l-stem "-"
+               :r-stem "-"
+               :roofstem "|"
+               :rooftop "|"
+               :rooftopangle "|"
+               :roofbottom ""
+               :roofbottomangle ""
+               :roofwidth 0
+               :roofminwidth 1
+               :word-wrap 5)
+       (:name basic-upwards
+               :der basic
+               :growing up
+               :hbranch "-"
+               :branchcenter "+"
+               :intersection "+"
+               :l-intersection "+"
+               :r-intersection "+"
+               :rooftop "-"
+               :roofbottom " "
+               :roofstem "+"
+               :roofbottomangle " "
+               :rooftopangle "+")
+       (:name basic-one-line
+               :der basic
+               :one-line t))
+
+
+File: readme-for-info.info,  Node: Define new styles,  Next: Change default style,  Prev: Built-in styles,  Up: Controlling the design of the tree
+
+3.3 Define new styles
+=====================
+
+Defining a new style is a matter of adding a new properly constructed
+plist to the list ‘syntree-styles-list’.
+
+   There are *two special properties* that must be defined in every
+style:
+
+   • ‘:name’
+   • ‘:der’
+
+   Both accept a symbol as value.  ‘:name’ specifies the name of the
+style, ‘:der’ specifies the name of the style from which the present one
+derives.
+
+   For example, say that I want to define a new style, ‘new-horizontal,’
+that is identical to the built in one named ‘horizontal’ except for two
+things: I want trees in ‘new-horizontal’ style to grow from right to
+left and to have all terminals of the tree be aligned.
+
+   The briefest way to define ‘new-horizontal’ is thus:
+
+     (add-to-list
+      'syntree-styles-list
+      '(:name new-horizontal
+        :der horizontal
+        :one-line t
+        :growing left))
+
+   All properties that are not defined in ‘new-horizontal’ are looked up
+in ‘horizontal’.
+
+   If the value of ‘:der’ is ‘nil’, then *all of the properties*
+described in *note properties: Properties. *must be defined*.
+
+
+File: readme-for-info.info,  Node: Change default style,  Prev: Define new styles,  Up: Controlling the design of the tree
+
+3.4 Change default style
+========================
+
+By default, ‘basic’ is the style that trees are designed according to
+when ‘syntree’ is called.  If you want ‘new-horizontal’ (the one defined
+*note here: Define new styles.) to be the default, set the value of
+‘syntree-default-style’ accordingly:
+
+     (setq syntree-default-style 'new-horizontal)
+
+
+
+Tag Table:
+Node: Top91
+Node: Introduction1666
+Node: Usage3022
+Node: Create a new tree3242
+Node: Syntax of the input3980
+Node: The interactive commands6930
+Node: syntree-change-value (C-c C-v)7528
+Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)8200
+Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)9014
+Node: syntree-change-style (C-c C-v)9818
+Node: syntree-done (C-c C-c)10401
+Node: Controlling the design of the tree10955
+Node: Properties11422
+Node: growing11906
+Node: oneline12337
+Node: hspace12641
+Node: height13181
+Node: roofwidth13747
+Node: roofminwidth14271
+Node: word-wrap14820
+Node: String or character properties15751
+Node: Built-in styles17469
+Node: Define new styles19594
+Node: Change default style20900
+
+End Tag Table
+
+
+Local Variables:
+coding: utf-8
+End:
