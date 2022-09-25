@@ -743,9 +743,25 @@ LAB is the label string, D the list of daughter nodes."
                                 (syntree--sublists x)))
                   (identity l)))))
 
-(defun syntree--main (s)
-  "Return the plain text tree given input string S."
-  ;; Add newlines and put everything together
+(defun syntree--main (s &optional style)
+  "Return the plain text tree given input string S.
+
+If the major mode is not `syntree-mode', this function sets the
+value for `syntree--current-style' as the defined one for
+`syntree-default-style', unless optional argument STYLE is
+non-nil.  In that case, STYLE is the symbol corresponding to a
+style in `syntree--styles-alist', the style according to which
+the tree will be built."
+  (unless (eq major-mode 'syntree-mode)
+    (setq syntree--styles-alist
+	  (mapcar #'(lambda (x) (cons (map-elt x :name) x))
+		  syntree-styles-list))
+    (unless syntree-default-style
+      (setq syntree-default-style 'basic))
+    (setq syntree--current-style
+          (syntree--copy-style (map-elt syntree--styles-alist
+                                        (or style
+					    syntree-default-style)))))
   (let* ((dir (syntree--p-get :growing))
          (raw-output (thread-last s
                                   (read)
