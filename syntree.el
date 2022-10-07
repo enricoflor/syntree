@@ -647,8 +647,10 @@ whitespace and the value of ':stem' according to
                     (center (if (characterp (syntree--p-get :branchcenter))
                                 (syntree--p-get :branchcenter)
                               (string-to-char (syntree--p-get :branchcenter))))
-                    (index-center (string-match "[^[:space:]]" only-center
-                                                nil t))
+                    (index-center (save-match-data
+                                    (string-match "[^[:space:]]"
+                                                  only-center
+                                                  nil)))
                     (branch-list (string-to-list branch)))
                (setf (nth index-center branch-list) center)
                (concat left-offset
