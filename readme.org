@@ -552,13 +552,13 @@ source block and the output tree will be returned as the result of the
 evaluation, under the block.
 
 #+begin_example
-#+begin_src syntree
+.#+begin_src syntree
 ("Sentence"
  "_NP:the young women"
  "Aux:may"
  ("VP" "Verb:hit"
   ("NP" "T:the" "N:ball")))
-#+end_src
+.#+end_src
 #+end_example
 
 You can control the design of the tree, deviating from whatever
@@ -569,11 +569,11 @@ For example, the block below when evaluated will return a tree in
 ~my-style~ with value 8 and "l" for ~:height~ and ~:stem~ respectively.
 
 #+begin_example
-#+begin_src syntree :style 'my-style :height 8 :stem "l"
+.#+begin_src syntree :style 'my-style :height 8 :stem "l"
 ("Sentence"
  "_NP:the young women"
  "Aux:may"
  ("VP" "Verb:hit"
   ("NP" "T:the" "N:ball")))
-#+end_src
+.#+end_src
 #+end_example
