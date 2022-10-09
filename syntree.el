@@ -5,8 +5,8 @@
 ;; Author: Enrico Flor <enrico@eflor.net>
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
 ;; URL: https://github.com/enricoflor/syntree
-;; Version: 1.0.0
-;; Package-Requires: ((emacs "27.1"))
+;; Version: 1.1.0
+;; Package-Requires: ((emacs "27.1") (org "9.2"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -43,6 +43,8 @@
 
 (require 'cl-lib)
 (require 'map)
+(require 'org)
+(require 'ob-core)
 (eval-when-compile (require 'subr-x))
 
 ;;; Global variables
@@ -745,7 +747,7 @@ LAB is the label string, D the list of daughter nodes."
                                 (syntree--sublists x)))
                   (identity l)))))
 
-(defun syntree--main (s &optional style)
+(defun syntree--main (s &optional style changes)
   "Return the plain text tree given input string S.
 
 If the major mode is not `syntree-mode', this function sets the
@@ -753,7 +755,11 @@ value for `syntree--current-style' as the defined one for
 `syntree-default-style', unless optional argument STYLE is
 non-nil.  In that case, STYLE is the symbol corresponding to a
 style in `syntree--styles-alist', the style according to which
-the tree will be built."
+the tree will be built.
+
+CHANGES is an alist that maps properties (members of
+`syntree-properties'): the values so specified override the ones
+in `syntree-default-style' or in STYLE."
   (unless (eq major-mode 'syntree-mode)
     (setq syntree--styles-alist
 	  (mapcar #'(lambda (x) (cons (map-elt x :name) x))
@@ -764,6 +770,9 @@ the tree will be built."
           (syntree--copy-style (map-elt syntree--styles-alist
                                         (or style
 					    syntree-default-style)))))
+  (when changes
+    (dolist (c changes)
+      (map-put! syntree--current-style (car c) (cdr c))))
   (let* ((dir (syntree--p-get :growing))
          (raw-output (thread-last s
                                   (read)
@@ -891,15 +900,6 @@ timer that redraws the tree."
     (with-selected-window (get-buffer-window input-buff t)
       (syntree-mode)
       (setq syntree--buffer-type 'input)
-      ;; Create syntree--styles-alist from the list of styles
-      (setq syntree--styles-alist
-	    (mapcar #'(lambda (x) (cons (map-elt x :name) x))
-		    syntree-styles-list))
-      (unless syntree-default-style
-        (setq syntree-default-style 'basic))
-      (setq syntree--style
-            (syntree--copy-style (map-elt syntree--styles-alist
-                                          syntree-default-style)))
       (setq syntree--input-hash (buffer-hash))
       (set-window-dedicated-p (selected-window) t)
       (let ((output-buffer (generate-new-buffer "syntree-output" nil)))
@@ -1114,6 +1114,19 @@ Call `syntree--refresh' to redraw the tree."
 		syntree-styles-list))
     (setq syntree--style
           (map-elt syntree--styles-alist syntree-default-style))))
+
+;;; Org-mode integration
+
+(add-to-list 'org-structure-template-alist
+             '("syntree" . "src syntree"))
+
+(defun org-babel-execute:syntree (body params)
+  "Execute a block containing syntree input."
+  (let ((style (cdr (assq :style params)))
+	(changes (cl-remove-if-not
+                  (lambda (x) (member (car x) syntree-properties))
+		  params)))
+    (syntree--main body style changes)))
 
 (provide 'syntree)
 
