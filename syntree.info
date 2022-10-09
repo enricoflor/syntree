@@ -32,6 +32,7 @@ modify this GNU manual.”
 * Introduction::
 * Usage::
 * Controlling the design of the tree::
+* Org-babel integration::
 
 — The Detailed Node Listing —
 
@@ -70,7 +71,7 @@ Properties
 
 
 
-File: syntree.info,  Node: Introduction,  Next: Usage,  Prev: Top,  Up: Top
+File: readme.info,  Node: Introduction,  Next: Usage,  Prev: Top,  Up: Top
 
 1 Introduction
 **************
@@ -103,7 +104,7 @@ of what you can get from ‘syntree’:
                     the  ball
 
    The drawing is done interactively, with the output displayed as you
-type.
+type:
 
    It does not provide functionalities such as drawing arrows between
 nodes.  Once the tree is drawn, however, arrows are rather easily added
@@ -115,7 +116,7 @@ manually with picture-mode
 (https://melpa.org/#/syntree).
 
 
-File: syntree.info,  Node: Usage,  Next: Controlling the design of the tree,  Prev: Introduction,  Up: Top
+File: readme.info,  Node: Usage,  Next: Controlling the design of the tree,  Prev: Introduction,  Up: Top
 
 2 Usage
 *******
@@ -127,7 +128,7 @@ File: syntree.info,  Node: Usage,  Next: Controlling the design of the tree,  Pr
 * The interactive commands::
 
 
-File: syntree.info,  Node: Create a new tree,  Next: Syntax of the input,  Up: Usage
+File: readme.info,  Node: Create a new tree,  Next: Syntax of the input,  Up: Usage
 
 2.1 Create a new tree
 =====================
@@ -144,7 +145,7 @@ valid syntree input is detected in it (or whenever the value of
 command—more on that below).
 
 
-File: syntree.info,  Node: Syntax of the input,  Next: The interactive commands,  Prev: Create a new tree,  Up: Usage
+File: readme.info,  Node: Syntax of the input,  Next: The interactive commands,  Prev: Create a new tree,  Up: Usage
 
 2.2 Syntax of the input
 =======================
@@ -153,18 +154,18 @@ The input is a substring of the buffer made up by parentheses and
 objects formatted as strings.  This input is ‘read’ as a list.  Thus,
 these are valid inputs:
 
-   #+begin_src emacs-lisp (“abc” (“def” “ghi”))
+   #+begin_src emacs-lisp ("abc" ("def" "ghi"))
 
-   (“abc” “def” “ghi”) #+end_src emacs-lisp
+   ("abc" "def" "ghi") #+end_src emacs-lisp
 
    Every list must contain more than one string.  These are not valid
 inputs:
 
-   #+begin_src emacs-lisp “abc” “def” ; this is not a list
+   #+begin_src emacs-lisp "abc" "def" ; this is not a list
 
-   (“abc” (“def” ghi)) ; not everything here is a string
+   ("abc" ("def" ghi)) ; not everything here is a string
 
-   (“abc” (“def”)) ; the embedded list contains only one string
+   ("abc" ("def")) ; the embedded list contains only one string
 #+end_src emacs-lisp
 
    The first string in a list is the label of the branching node.  Here,
@@ -243,7 +244,7 @@ input.
 not, and whether it is indented in any way or not is irrelevant.
 
 
-File: syntree.info,  Node: The interactive commands,  Prev: Syntax of the input,  Up: Usage
+File: readme.info,  Node: The interactive commands,  Prev: Syntax of the input,  Up: Usage
 
 2.3 The interactive commands
 ============================
@@ -262,7 +263,7 @@ in ‘syntree-mode-map’.
 * syntree-done (C-c C-c)::
 
 
-File: syntree.info,  Node: syntree-info,  Next: syntree-change-value (C-c C-v),  Up: The interactive commands
+File: readme.info,  Node: syntree-info,  Next: syntree-change-value (C-c C-v),  Up: The interactive commands
 
 2.3.1 syntree-info
 ------------------
@@ -270,7 +271,7 @@ File: syntree.info,  Node: syntree-info,  Next: syntree-change-value (C-c C-v), 
 Read the documentation for ‘syntree’ in the info system.
 
 
-File: syntree.info,  Node: syntree-change-value (C-c C-v),  Next: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Prev: syntree-info,  Up: The interactive commands
+File: readme.info,  Node: syntree-change-value (C-c C-v),  Next: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Prev: syntree-info,  Up: The interactive commands
 
 2.3.2 syntree-change-value (C-c C-v)
 ------------------------------------
@@ -285,7 +286,7 @@ after changing a value you reset the style, the change will be
 discarded.
 
 
-File: syntree.info,  Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Next: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Prev: syntree-change-value (C-c C-v),  Up: The interactive commands
+File: readme.info,  Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Next: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Prev: syntree-change-value (C-c C-v),  Up: The interactive commands
 
 2.3.3 syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)
 --------------------------------------------------------------------------------
@@ -300,7 +301,7 @@ after changing a value you reset the style, the change will be
 discarded.
 
 
-File: syntree.info,  Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Next: syntree-change-style (C-c C-v),  Prev: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Up: The interactive commands
+File: readme.info,  Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Next: syntree-change-style (C-c C-v),  Prev: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>),  Up: The interactive commands
 
 2.3.4 syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)
 ---------------------------------------------------------------------------
@@ -315,7 +316,7 @@ after changing a value you reset the style, the change will be
 discarded.
 
 
-File: syntree.info,  Node: syntree-change-style (C-c C-v),  Next: syntree-done (C-c C-c),  Prev: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Up: The interactive commands
+File: readme.info,  Node: syntree-change-style (C-c C-v),  Next: syntree-done (C-c C-c),  Prev: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>),  Up: The interactive commands
 
 2.3.5 syntree-change-style (C-c C-v)
 ------------------------------------
@@ -328,7 +329,7 @@ determined by the value of ‘syntree-default-style’ (more on this *note
 here: Change default style.).
 
 
-File: syntree.info,  Node: syntree-done (C-c C-c),  Prev: syntree-change-style (C-c C-v),  Up: The interactive commands
+File: readme.info,  Node: syntree-done (C-c C-c),  Prev: syntree-change-style (C-c C-v),  Up: The interactive commands
 
 2.3.6 syntree-done (C-c C-c)
 ----------------------------
@@ -341,7 +342,7 @@ in the position it was when ‘syntree-new’ was called.  You can now yank
 the tree.
 
 
-File: syntree.info,  Node: Controlling the design of the tree,  Prev: Usage,  Up: Top
+File: readme.info,  Node: Controlling the design of the tree,  Next: Org-babel integration,  Prev: Usage,  Up: Top
 
 3 Controlling the design of the tree
 ************************************
@@ -358,7 +359,7 @@ switch between *note predefined styles: Define new styles.
 * Change default style::
 
 
-File: syntree.info,  Node: Properties,  Next: Built-in styles,  Up: Controlling the design of the tree
+File: readme.info,  Node: Properties,  Next: Built-in styles,  Up: Controlling the design of the tree
 
 3.1 Properties
 ==============
@@ -379,7 +380,7 @@ strings or characters.  We first examine the first group.
 * String or character properties::
 
 
-File: syntree.info,  Node: growing,  Next: oneline,  Up: Properties
+File: readme.info,  Node: growing,  Next: oneline,  Up: Properties
 
 3.1.1 :growing
 --------------
@@ -396,7 +397,7 @@ the value is ‘right’, the root of the tree will be to the left and the
 tree will horizontally grow to the right.
 
 
-File: syntree.info,  Node: oneline,  Next: hspace,  Prev: growing,  Up: Properties
+File: readme.info,  Node: oneline,  Next: hspace,  Prev: growing,  Up: Properties
 
 3.1.2 :oneline
 --------------
@@ -407,7 +408,7 @@ This property has a boolean value.
 (horizontally or vertically depending on the value of *note growing::).
 
 
-File: syntree.info,  Node: hspace,  Next: height,  Prev: oneline,  Up: Properties
+File: readme.info,  Node: hspace,  Next: height,  Prev: oneline,  Up: Properties
 
 3.1.3 :hspace
 -------------
@@ -425,7 +426,7 @@ viable value.
 determining vertical space between nodes.
 
 
-File: syntree.info,  Node: height,  Next: roofwidth,  Prev: hspace,  Up: Properties
+File: readme.info,  Node: height,  Next: roofwidth,  Prev: hspace,  Up: Properties
 
 3.1.4 :height
 -------------
@@ -443,7 +444,7 @@ viable value.
 determining a horizontal dimension despite its name.
 
 
-File: syntree.info,  Node: roofwidth,  Next: roofminwidth,  Prev: height,  Up: Properties
+File: readme.info,  Node: roofwidth,  Next: roofminwidth,  Prev: height,  Up: Properties
 
 3.1.5 :roofwidth
 ----------------
@@ -475,7 +476,7 @@ under it, a negative one, shorter.
      long leaf
 
 
-File: syntree.info,  Node: roofminwidth,  Next: word-wrap,  Prev: roofwidth,  Up: Properties
+File: readme.info,  Node: roofminwidth,  Next: word-wrap,  Prev: roofwidth,  Up: Properties
 
 3.1.6 :roofminwidth
 -------------------
@@ -491,7 +492,7 @@ it would have to be less than ‘5’ characters wide.
 viable value.
 
 
-File: syntree.info,  Node: word-wrap,  Next: String or character properties,  Prev: roofminwidth,  Up: Properties
+File: readme.info,  Node: word-wrap,  Next: String or character properties,  Prev: roofminwidth,  Up: Properties
 
 3.1.7 :word-wrap
 ----------------
@@ -501,7 +502,7 @@ This property accepts an integer as value.
    A value smaller than 1 means that strings in the input are never
 broken in different lines except at new line characters.  Any other
 value causes the string to be word wrapped at that given length: for
-instance, a value of 4 will cause the string “young boy” to be split in
+instance, a value of 4 will cause the string "young boy" to be split in
 two.
 
      :word-wrap 0
@@ -532,7 +533,7 @@ is centered.  If it grows horizontally, it is flushed left or right:
        boy--
 
 
-File: syntree.info,  Node: String or character properties,  Prev: word-wrap,  Up: Properties
+File: readme.info,  Node: String or character properties,  Prev: word-wrap,  Up: Properties
 
 3.1.8 String or character properties
 ------------------------------------
@@ -584,7 +585,7 @@ which component of the tree is associated with which property.
                                            the    ball
 
 
-File: syntree.info,  Node: Built-in styles,  Next: Define new styles,  Prev: Properties,  Up: Controlling the design of the tree
+File: readme.info,  Node: Built-in styles,  Next: Define new styles,  Prev: Properties,  Up: Controlling the design of the tree
 
 3.2 Built-in styles
 ===================
@@ -655,7 +656,7 @@ predefined value of ‘syntree-styles-list’ is:
                :one-line t))
 
 
-File: syntree.info,  Node: Define new styles,  Next: Change default style,  Prev: Built-in styles,  Up: Controlling the design of the tree
+File: readme.info,  Node: Define new styles,  Next: Change default style,  Prev: Built-in styles,  Up: Controlling the design of the tree
 
 3.3 Define new styles
 =====================
@@ -694,7 +695,7 @@ in ‘horizontal’.
 described in *note properties: Properties. *must be defined*.
 
 
-File: syntree.info,  Node: Change default style,  Prev: Define new styles,  Up: Controlling the design of the tree
+File: readme.info,  Node: Change default style,  Prev: Define new styles,  Up: Controlling the design of the tree
 
 3.4 Change default style
 ========================
@@ -706,34 +707,71 @@ of ‘syntree-default-style’ accordingly:
 
      (setq syntree-default-style 'new-horizontal)
 
+
+File: readme.info,  Node: Org-babel integration,  Prev: Controlling the design of the tree,  Up: Top
+
+4 Org-babel integration
+***********************
+
+Installing ‘syntree’ provides you with a ‘syntree src block’ that you
+can use like any other source block in you org-mode buffer.  By writing
+an input string in such a block, you can evaluate it like any other
+source block and the output tree will be returned as the result of the
+evaluation, under the block.
+
+     #+begin_src syntree
+     ("Sentence"
+      "_NP:the young women"
+      "Aux:may"
+      ("VP" "Verb:hit"
+       ("NP" "T:the" "N:ball")))
+     #+end_src
+
+   You can control the design of the tree, deviating from whatever
+‘syntree-default-style’ specifies, by passing the specifications for
+‘:style’ and all the other properties as parameters of the source block.
+
+   For example, the block below when evaluated will return a tree in
+‘my-style’ with value 8 and "l" for ‘:height’ and ‘:stem’ respectively.
+
+     #+begin_src syntree :style 'my-style :height 8 :stem "l"
+     ("Sentence"
+      "_NP:the young women"
+      "Aux:may"
+      ("VP" "Verb:hit"
+       ("NP" "T:the" "N:ball")))
+     #+end_src
+
 
 
 Tag Table:
-Node: Top75
-Node: Introduction1659
-Node: Usage3086
-Node: Create a new tree3298
-Node: Syntax of the input4032
-Node: The interactive commands6974
-Node: syntree-info7581
-Node: syntree-change-value (C-c C-v)7795
-Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)8480
-Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)9286
-Node: syntree-change-style (C-c C-v)10082
-Node: syntree-done (C-c C-c)10661
-Node: Controlling the design of the tree11211
-Node: Properties11670
-Node: growing12146
-Node: oneline12569
-Node: hspace12865
-Node: height13397
-Node: roofwidth13955
-Node: roofminwidth14471
-Node: word-wrap15012
-Node: String or character properties15935
-Node: Built-in styles17645
-Node: Define new styles19762
-Node: Change default style21060
+Node: Top73
+Node: Introduction1010
+Ref: figsyntree-demo12084
+Node: Usage2505
+Node: Create a new tree2716
+Node: Syntax of the input3449
+Node: The interactive commands6342
+Node: syntree-info6948
+Node: syntree-change-value (C-c C-v)7161
+Node: syntree-increase-padding (M-<right>) and syntree-reduce-padding (M-<left>)7845
+Node: syntree-increase-height (M-<down>) and syntree-reduce-height (M-<up>)8650
+Node: syntree-change-style (C-c C-v)9445
+Node: syntree-done (C-c C-c)10023
+Node: Controlling the design of the tree10572
+Node: Properties11060
+Node: growing11535
+Node: oneline11957
+Node: hspace12252
+Node: height12783
+Node: roofwidth13340
+Node: roofminwidth13855
+Node: word-wrap14395
+Node: String or character properties15313
+Node: Built-in styles17022
+Node: Define new styles19138
+Node: Change default style20435
+Node: Org-babel integration20923
 
 End Tag Table
 

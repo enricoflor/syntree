@@ -4,7 +4,8 @@
 
 [[https://melpa.org/#/syntree][file:https://melpa.org/packages/syntree-badge.svg]]
 
-* Content :toc:
+
+* Content                                                               :toc:
 - [[#introduction][Introduction]]
 - [[#usage][Usage]]
   - [[#create-a-new-tree][Create a new tree]]
@@ -15,6 +16,7 @@
   - [[#built-in-styles][Built-in styles]]
   - [[#define-new-styles][Define new styles]]
   - [[#change-default-style][Change default style]]
+- [[#org-babel-integration][Org-babel integration]]
 
 * Introduction
 ~syntree~ is a package for GNU Emacs that draws plain text constituency
@@ -539,3 +541,39 @@ when ~syntree-new~ is called.  If you want ~new-horizontal~ (the one defined
 #+begin_src emacs-lisp
 (setq syntree-default-style 'new-horizontal)
 #+end_src
+* Org-babel integration
+:PROPERTIES:
+:CUSTOM_ID: org-integration
+:END:
+Installing ~syntree~ provides you with a ~syntree src block~ that you can
+use like any other source block in you org-mode buffer.  By writing an
+input string in such a block, you can evaluate it like any other
+source block and the output tree will be returned as the result of the
+evaluation, under the block.
+
+#+begin_example
+#+begin_src syntree
+("Sentence"
+ "_NP:the young women"
+ "Aux:may"
+ ("VP" "Verb:hit"
+  ("NP" "T:the" "N:ball")))
+#+end_src
+#+end_example
+
+You can control the design of the tree, deviating from whatever
+~syntree-default-style~ specifies, by passing the specifications for
+~:style~ and all the other properties as parameters of the source block.
+
+For example, the block below when evaluated will return a tree in
+~my-style~ with value 8 and "l" for ~:height~ and ~:stem~ respectively.
+
+#+begin_example
+#+begin_src syntree :style 'my-style :height 8 :stem "l"
+("Sentence"
+ "_NP:the young women"
+ "Aux:may"
+ ("VP" "Verb:hit"
+  ("NP" "T:the" "N:ball")))
+#+end_src
+#+end_example
