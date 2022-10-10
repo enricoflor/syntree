@@ -153,12 +153,10 @@ value for all properties in `syntree-properties'.")
           :roofbottom " "
           :roofstem "+"
           :roofbottomangle " "
-          :rooftopangle "+"))
+          :rooftopangle "+")
+    "Basic upward-growing style for `syntree' trees.
 
-(defvar syntree--style-basic-one-line
-  '(:name basic-one-line
-          :der basic
-          :one-line t))
+This style is derived from `syntree--style-basic'.")
 
 (defvar syntree-styles-list '()
   "List of plists that define a style for syntree trees.")
@@ -166,8 +164,7 @@ value for all properties in `syntree-properties'.")
 (setq syntree-styles-list (mapcar #'eval
                                   '(syntree--style-basic
                                     syntree--style-horizontal
-                                    syntree--style-basic-upwards
-                                    syntree--style-basic-one-line)))
+                                    syntree--style-basic-upwards)))
 
 (defvar syntree-default-style 'basic
   "Initial style for syntree trees.
@@ -253,7 +250,7 @@ The output of this function is a list of strings that will be
 identical to those in L if the tree is turned from vertical to
 horizontal.
 
-Return L if DIRECTION is not 'left' or 'right'."
+Return L if DIRECTION is not ''left' or ''right'."
   (if (or (eq direction 'left) (eq direction 'right))
       (thread-last l
                    (syntree--homogenize-length 'list nil direction)
@@ -270,7 +267,7 @@ The output of this function is a list of strings that will be
 identical to those in L if the tree is turned from vertical to
 horizontal.
 
-Return L if DIRECTION is not 'left' or 'right'."
+Return L if DIRECTION is not ''left' or ''right'."
   (if (or (eq direction 'left) (eq direction 'right))
       (let ((disassembled (thread-last l
                                        (mapcar #'syntree--string-to-list)
@@ -281,7 +278,7 @@ Return L if DIRECTION is not 'left' or 'right'."
 (defun syntree--fill (p w right-or-left s)
   "If S is shorter than W, pad right and left with P.
 
-If RIGHT-OR-LEFT is 'right' or 'left', just pad at the right or
+If RIGHT-OR-LEFT is ''right' or ''left', just pad at the right or
 left of S, respectively.
 
 Always return a string that is at least as long as W."
@@ -331,7 +328,6 @@ The desired length is the value for ':word-wrap' in
 `syntree--current-style' if WIDTH is nil, otherwise is WIDTH.
 
 Return a list of strings."
-  ;; (when ())
   (let ((w (or width (syntree--p-get :word-wrap))))
     (if (string-blank-p s)
         (list "")
@@ -378,10 +374,10 @@ Return a list of strings."
 STR are either strings or lists of strings.  If WIDTH is non-nil,
 make all strings in the output at least as wide as WIDTH.
 
-If RIGHT-OR-LEFT is 'right' or 'left', just pad at the right or
+If RIGHT-OR-LEFT is ''right' or ''left', just pad at the right or
 left of S, respectively.  If it is nil, pad on both sides.
 
-If RETURN-OBJ is 'node', return a node object instead of a list
+If RETURN-OBJ is ''node', return a node object instead of a list
 of strings (that is, a list whose car is an integer, the width of
 the lists in the cdr.).
 
@@ -411,19 +407,19 @@ Always remove empty strings from the input."
                                         &optional branch-string)
   "Take a string S and return the label or the terminal.
 
-If INPUT-OBJ is 'leaf', also split S between a label and the
-text.  If it is 'label', don't do anything about colons.
+If INPUT-OBJ is ''leaf', also split S between a label and the
+text.  If it is ''label', don't do anything about colons.
 
 BRANCH-STRING is the string containing the branch connecting.
 
-Always return a list of strings: if RETURN-OBJ is 'label', return
-the label, if it is 'terminal', return the terminal.  The value
-of RETURN-OBJ is ignored if INPUT-OBJ is 'label' (labels are not
+Always return a list of strings: if RETURN-OBJ is ''label', return
+the label, if it is ''terminal', return the terminal.  The value
+of RETURN-OBJ is ignored if INPUT-OBJ is ''label' (labels are not
 divided between labels and text).
 
 Whatever comes before the first \":\" is going to be the label.
 
-If there is no label and RETURN-OBJ is 'label', return a list
+If there is no label and RETURN-OBJ is ''label', return a list
 containing the empty string.
 
 If DIRECTION is ':right' or ':left', return a list with the
@@ -661,6 +657,7 @@ whitespace and the value of ':stem' according to
 
 (defun syntree--split-branch (s)
   "Return list of branch, left and right offset.
+
 S is the string containing the branch."
   (list (replace-regexp-in-string "\s" "" s)
 	(thread-last s
@@ -1122,7 +1119,10 @@ Call `syntree--refresh' to redraw the tree."
              '("syntree" . "src syntree"))
 
 (defun org-babel-execute:syntree (body params)
-  "Execute a block containing syntree input."
+  "Execute a block containing syntree input.
+
+BODY is the input string in the source block and PARAMS the
+parameter passed to the source block (parsed into an alist)."
   (let ((style (cdr (assq :style params)))
 	(changes (cl-remove-if-not
                   (lambda (x) (member (car x) syntree-properties))
