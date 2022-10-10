@@ -5,7 +5,7 @@
 ;; Author: Enrico Flor <enrico@eflor.net>
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
 ;; URL: https://github.com/enricoflor/syntree
-;; Version: 1.1.0
+;; Version: 1.1.1
 ;; Package-Requires: ((emacs "27.1") (org "9.2"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -757,7 +757,7 @@ non-nil.  In that case, STYLE is the symbol corresponding to a
 style in `syntree--styles-alist', the style according to which
 the tree will be built.
 
-CHANGES is an alist that maps properties (members of
+CHANGES is an alist or a plist that maps properties (members of
 `syntree-properties'): the values so specified override the ones
 in `syntree-default-style' or in STYLE."
   (unless (eq major-mode 'syntree-mode)
@@ -771,8 +771,9 @@ in `syntree-default-style' or in STYLE."
                                         (or style
 					    syntree-default-style)))))
   (when changes
-    (dolist (c changes)
-      (map-put! syntree--current-style (car c) (cdr c))))
+    (let ((ks (map-keys changes)))
+      (dolist (k ks)
+        (map-put! syntree--current-style k (map-elt changes k)))))
   (let* ((dir (syntree--p-get :growing))
          (raw-output (thread-last s
                                   (read)
