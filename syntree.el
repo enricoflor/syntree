@@ -5,7 +5,7 @@
 ;; Author: Enrico Flor <enrico@eflor.net>
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
 ;; URL: https://github.com/enricoflor/syntree
-;; Version: 1.1.1
+;; Version: 1.1.2
 ;; Package-Requires: ((emacs "27.1") (org "9.2"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -310,14 +310,16 @@ to L until the length is N."
                      most-positive-fixnum)
                     ((< w 1)
                      most-positive-fixnum)
-                    (t w))))
+                    (t w)))
+        (trailspace (substring s (string-match "[[:space:]]*$" s 0 t))))
     (with-temp-buffer
       (insert s)
       (goto-char (point-min))
       (let ((fill-column wrap)
             (adaptive-fill-mode nil))
         (fill-region (point-min) (point-max)))
-      (buffer-substring-no-properties (point-min) (point-max)))))
+      (concat (buffer-substring-no-properties (point-min) (point-max))
+              trailspace))))
 
 ;;; Converting leaf strings into terminal nodes
 
@@ -333,7 +335,6 @@ Return a list of strings."
         (list "")
       (thread-last
         s
-        (string-trim)
         (funcall #'(lambda (x) (split-string x "[\f\t\n\r\v]+" t)))
         (mapcar #'(lambda (x) (syntree--wrap-string x w)))
         (mapcar #'(lambda (x) (split-string x "[\f\t\n\r\v]+" t)))
