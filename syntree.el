@@ -1,6 +1,6 @@
 ;;; syntree.el --- Draw plain text constituency trees  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2021, 2022 Enrico Flor
+;; Copyright (C) 2021, 2022, 2023 Enrico Flor
 
 ;; Author: Enrico Flor <enrico@eflor.net>
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
@@ -241,7 +241,7 @@ DIRECTION can be either ':down', ':up', ':right' or ':left'."
     ;; list.  But the same is true if the growth is to the left:
     ;; because the strings will be transformed, and the first string
     ;; will end up being the last slice, etc.
-    (if (or (eq dir 'up) (eq dir 'left)) (nreverse x) (identity x))))
+    (if (memq dir '(up left)) (nreverse x) (identity x))))
 
 (defun syntree--verticalize-text (direction l)
   "With L a list of strings, return an adjusted list.
@@ -251,7 +251,7 @@ identical to those in L if the tree is turned from vertical to
 horizontal.
 
 Return L if DIRECTION is not ''left' or ''right'."
-  (if (or (eq direction 'left) (eq direction 'right))
+  (if (memq direction '(left right))
       (thread-last l
                    (syntree--homogenize-length 'list nil direction)
                    (mapcar #'syntree--string-to-list)
@@ -268,7 +268,7 @@ identical to those in L if the tree is turned from vertical to
 horizontal.
 
 Return L if DIRECTION is not ''left' or ''right'."
-  (if (or (eq direction 'left) (eq direction 'right))
+  (if (memq direction '(left right))
       (let ((disassembled (thread-last l
                                        (mapcar #'syntree--string-to-list)
                                        (syntree--reverse nil))))
@@ -311,7 +311,7 @@ to L until the length is N."
                     ((< w 1)
                      most-positive-fixnum)
                     (t w)))
-        (trailspace (substring s (string-match "[[:space:]]*$" s 0 t))))
+        (trailspace (substring s (string-match "[[:space:]]*$" s 0))))
     (with-temp-buffer
       (insert s)
       (goto-char (point-min))
@@ -433,7 +433,7 @@ strings transformed accordingly."
          ;; is needed.  Probably because the tree is internally
          ;; constructed as if it grew to the right.  Now if PAD is
          ;; non-nil, it means that the growth is horizontal
-         (dir (when (or (eq direction 'right) (eq direction 'left))
+         (dir (when (memq direction '(right left))
                 direction))
          (actual-str (cond ((eq input-obj 'label) s)
                            ;; for the next two conditions, input-obj
@@ -1058,11 +1058,8 @@ Call `syntree--refresh' to redraw the tree."
            (pr (format "(Current is %s): " curr))
            (value (cond ((eq property :one-line)
                          (not curr))
-                        ((or (eq property :hspace)
-                             (eq property :height)
-                             (eq property :roofwidth)
-                             (eq property :roofminwidth)
-                             (eq property :word-wrap))
+                        ((memq property '(:hspace :height :roofwidth
+                                                  :roofminwidth :word-wrap))
                          (read-number pr))
                         ((eq property :growing)
                          (intern (completing-read ": "
