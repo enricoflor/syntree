@@ -5,7 +5,7 @@
 ;; Author: Enrico Flor <enrico@eflor.net>
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
 ;; URL: https://github.com/enricoflor/syntree
-;; Version: 1.1.2
+;; Version: 1.2.0
 ;; Package-Requires: ((emacs "27.1") (org "9.2"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
@@ -45,6 +45,7 @@
 (require 'map)
 (require 'org)
 (require 'ob-core)
+(require 'text-property-search)
 (eval-when-compile (require 'subr-x))
 
 ;;; Global variables
@@ -78,7 +79,8 @@
     :roofbottomangle
     :roofwidth
     :roofminwidth
-    :word-wrap)
+    :word-wrap
+    :compress)
   "Properties that define the the style of a tree.
 
 In addition to any number of these properties, a style must
@@ -106,7 +108,8 @@ assign a value to the special keywords ':der' and ':name'.")
           :roofbottomangle "|"
           :roofwidth 0
           :roofminwidth 3
-          :word-wrap 0)
+          :word-wrap 0
+          :compress t)
   "Basic vertical style for `syntree' trees.
 
 This style can be used as basis for others since it specifies a
@@ -134,7 +137,8 @@ value for all properties in `syntree-properties'.")
           :roofbottomangle ""
           :roofwidth 0
           :roofminwidth 1
-          :word-wrap 5)
+          :word-wrap 5
+          :compress t)
   "Basic horizontal style for `syntree' trees.
 
 This style can be used as basis for others since it specifies a
@@ -219,7 +223,7 @@ specified as value for ':der' in plist ST."
          (der (map-elt style :der)))
     ;; If the value of :der is missing or refers to a non defined
     ;; style, we need to quit.
-    (cond ((and (not (memq :der (map-keys style))))
+    (cond ((not (memq :der (map-keys style)))
            (user-error "Malformed style plist: missing :der value"))
           ((and der (not (map-elt syntree--styles-alist der)))
            (user-error (format "%s not defined" der)))
@@ -503,16 +507,28 @@ the node, and whose cdr is a list of strings."
                                  (make-list height)
                                  (syntree--homogenize-length nil
                                                              max-size
-                                                             nil))))
-    (thread-last (list stem-list label roof-string text)
-                 (apply #'syntree--homogenize-length 'node nil nil)
-                 (cl-delete-if #'(lambda (s) (and (stringp s)
-                                                  (string-blank-p s)))))))
+                                                             nil)))
+         (node-no-ws (thread-last (list stem-list label roof-string text)
+                                  (apply #'syntree--homogenize-length
+                                         'node nil nil)
+                                  (cl-delete-if #'(lambda (s)
+                                                    (ignore-errors
+                                                      (string-blank-p s))))))
+         (len (apply #'max (mapcar #'length (cdr node-no-ws))))
+         (special (make-string len ?\X)))
+    (put-text-property 0 (length special) :syntree-remove t special)
+    (nconc node-no-ws (list special))))
 
 (defun syntree--string-to-list (s)
   "Convert string S into a list of strings."
-  (let ((list-of-chars (string-to-list s)))
-    (mapcar #'char-to-string list-of-chars)))
+  ;; we need to preserve text properties (specifically :syntree-remove)
+  (let (out)
+    (with-temp-buffer
+      (insert s)
+      (goto-char (point-min))
+      (dotimes (i (1- (point-max)))
+        (push (buffer-substring (1+ i) (+ 2 i)) out)))
+    (nreverse out)))
 
 (defun syntree--replace-terminal-strings (l)
   "Replace every terminal string in L with the node it represents.
@@ -551,7 +567,7 @@ The depth of the individual nodes is adjusted and the the
 resulting node is obtained by zipping the lists of strings of
 each node, concatenating them with the desidered amount of
 padding."
-  (let* ((max-depth (apply #'max (mapcar #'(lambda (x) (1- (length x))) l)))
+  (let* ((max-depth (apply #'max (mapcar (lambda (x) (1- (length x))) l)))
          (terminals-list
           (mapcar #'(lambda (x) (syntree--adjust-depth x max-depth)) l))
          (str (mapcar #'cdr terminals-list))
@@ -571,6 +587,47 @@ padding."
     (cons total-width
           (syntree--zip-concat-lists-of-strings pad-string str))))
 
+(defun syntree--compress-strings (l)
+  "Given list of two lists of strings L, return them compressed."
+  (let ((first (nth 0 l))
+        (second (nth 1 l))
+        new-first new-second
+        max-spaces-cons-list
+        space-to-gain (ind-count 0))
+    (dotimes (i (length first))
+      (let ((str1 (nth i first))
+            (str2 (nth i second))
+            right left)
+        (setq left (- (length str1) (length (string-trim-right str1)))
+              right (- (length str2) (length (string-trim-left str2))))
+        (push (cons left right) max-spaces-cons-list)))
+    (setq space-to-gain (apply #'min
+                               (mapcar (lambda (x) (+ (car x) (cdr x)))
+                                       max-spaces-cons-list)))
+    (if (= 0 space-to-gain)
+        l
+      (dolist (i (nreverse max-spaces-cons-list))
+        (let (cut-amount-left cut-amount-right)
+          (cond ((>= (car i) space-to-gain)
+                 (setq cut-amount-left space-to-gain
+                       cut-amount-right 0))
+                ((>= (cdr i) space-to-gain)
+                 (setq cut-amount-left 0
+                       cut-amount-right space-to-gain))
+                (t
+                 (let (remain)
+                   (setq remain (- space-to-gain (car i)))
+                   (setq cut-amount-left remain
+                         cut-amount-right (- space-to-gain remain)))))
+          (push (substring (nth ind-count first) 0
+                           (unless (= 0 cut-amount-left)
+                             (- cut-amount-left (* 2 cut-amount-left))))
+                new-first)
+          (push (substring (nth ind-count second) cut-amount-right)
+                new-second))
+        (setq ind-count (1+ ind-count)))
+      (list (nreverse new-first) (nreverse new-second)))))
+
 (defun syntree--zip-concat-lists-of-strings (pad l)
   "Given a list of strings L, zip them with separator PAD.
 
@@ -585,9 +642,12 @@ PAD is a string that function as a separator like in
   (cond ((= (length l) 1)
          (car l))
         ((= (length l) 2)
-         (cl-mapcar (lambda (x y) (concat x pad y))
-                    (car l)
-                    (cadr l)))
+         (let ((trimmed (if (syntree--p-get :compress)
+                            (syntree--compress-strings l)
+                          l)))
+           (cl-mapcar (lambda (x y) (concat x pad y))
+                      (car trimmed)
+                      (cadr trimmed))))
         (t (cl-mapcar (lambda (x y) (concat x pad y))
                       (car l)
                       (syntree--zip-concat-lists-of-strings pad (cdr l))))))
@@ -745,6 +805,34 @@ LAB is the label string, D the list of daughter nodes."
                                 (syntree--sublists x)))
                   (identity l)))))
 
+(defun syntree--remove-placeholders (str)
+  "Return STR with all placeholder characters removed.
+
+Placeholder characters form those substrings of STR that have the
+\\=':syntree-remove\\=' text property."
+  (with-temp-buffer
+    (let (poss)
+      (insert str)
+      (goto-char (point-min))
+      (while (not (eobp))
+        (let ((obj (text-property-search-forward :syntree-remove t
+                                                 nil nil))
+              b e)
+          (when obj
+            (setq b (point))
+            (text-property-search-forward :syntree-remove
+                                          nil nil nil)
+            (setq e (point))
+            (push (cons b e) poss))))
+      (if (not poss)
+          (buffer-substring (point-min) (point-max))
+        (dolist (c poss)
+          (let ((blank (make-string (- (cdr c) (car c)) ?\s)))
+            (goto-char (car c))
+            (delete-region (car c) (cdr c))
+            (insert blank)))
+        (buffer-substring (point-min) (point-max))))))
+
 (defun syntree--main (s &optional style changes)
   "Return the plain text tree given input string S.
 
@@ -782,6 +870,7 @@ in `syntree-default-style' or in STYLE."
                                   (cl-delete-if #'string-blank-p))))
     (thread-first (syntree--reverse nil raw-output)
                   (string-join "\n")
+                  (syntree--remove-placeholders)
                   (concat "\n"))))
 
 ;;; Interactive part
@@ -915,9 +1004,9 @@ timer that redraws the tree."
         ;; that large trees are displayed faithfully
         (syntree-mode)
         (font-lock-mode -1)
-        (setq syntree--buffer-type 'output
-              truncate-lines t
-              syntree--input-buffer input-buff
+        (setq syntree--buffer-type     'output
+              truncate-lines           t
+              syntree--input-buffer    input-buff
               syntree--original-marker old-position)
         (read-only-mode 1)
         (select-window (get-buffer-window input-buff)))))
@@ -1056,10 +1145,10 @@ Call `syntree--refresh' to redraw the tree."
            (property (intern p))
            (curr (syntree--p-get property))
            (pr (format "(Current is %s): " curr))
-           (value (cond ((eq property :one-line)
+           (value (cond ((memq property '(:compress :one-line))
                          (not curr))
-                        ((memq property '(:hspace :height :roofwidth
-                                                  :roofminwidth :word-wrap))
+                        ((memq property '( :hspace :height :roofwidth
+                                           :roofminwidth :word-wrap))
                          (read-number pr))
                         ((eq property :growing)
                          (intern (completing-read ": "

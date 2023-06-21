@@ -376,6 +376,35 @@ centered.  If it grows horizontally, it is flushed left or right:
 young
   boy--
 #+end_example
+*** :compress
+This property has a boolean value.
+
+If it is ~t~, it means that the width or height of the tree (depending
+on whether the value of ~:growing~ is ~down~ / ~up~ or ~right~ / ~left~
+respectively) is reduced as much as possible.  Nodes can end up being
+"stacked" on each other.
+
+#+begin_example
+:compress t
+
+   .______|_____.
+   |            |
+   NP     ._____|____.
+the man   |          |
+         ADV        VP
+     vigorously     hit
+                 the ball
+
+:compress nil
+
+   .________|_______.
+   |                |
+   NP         ._____|____.
+the man       |          |
+             ADV        VP
+         vigorously     hit
+                     the ball
+#+end_example
 *** String or character properties
 These are all properties that determine which character is used to
 draw each part of the tree.  The values can be strings (containing one
@@ -451,7 +480,8 @@ define your own (see [[#define-style][here]]).  That is, the predefined value of
          :roofbottomangle "|"
          :roofwidth 0
          :roofminwidth 3
-         :word-wrap 0)
+         :word-wrap 0
+         :compress t)
   (:name horizontal
           :der nil
           :growing right
@@ -473,7 +503,8 @@ define your own (see [[#define-style][here]]).  That is, the predefined value of
           :roofbottomangle ""
           :roofwidth 0
           :roofminwidth 1
-          :word-wrap 5)
+          :word-wrap 5
+          :compress t)
   (:name basic-upwards
           :der basic
           :growing up
